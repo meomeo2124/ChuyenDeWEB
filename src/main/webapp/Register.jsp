@@ -1,22 +1,18 @@
-<%@ page language="java" contentType="text/html; charset=UTF-8"
-	pageEncoding="UTF-8"%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<title>Registration</title>
-<link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
-<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css" rel="stylesheet" />
-<link href="css/styles.css" rel="stylesheet" />
+  <meta charset="UTF-8">
+  <title>Registration</title>
+  <link rel="icon" type="image/x-icon" href="${pageContext.request.contextPath}/assets/favicon.ico" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css" rel="stylesheet" />
+  <link href="${pageContext.request.contextPath}/css/styles.css" rel="stylesheet" />
 </head>
 <body>
 
-	<!-- Navbar -->
-	<%@ include file="template/includes/navbar.jsp"%>
-	
+<%@ include file="/template/includes/navbar.jsp"%>
 
-<!-- Content -->
 <section class="bg-light p-3 p-md-4 p-xl-5">
   <div class="container">
     <div class="row justify-content-center">
@@ -27,48 +23,47 @@
               <div class="col-12">
                 <div class="mb-5">
                   <div class="text-center mb-4">
-                    <a href="#!">
-                      <img src="image/website/logo.png" alt="Logo" width="100" height="100">
+                    <a href="${pageContext.request.contextPath}/home">
+                      <img src="${pageContext.request.contextPath}/image/website/logo.png" alt="Boba Station Logo" width="150">
                     </a>
                   </div>
-                  <h2 class="h4 text-center">Registration</h2>
-                  <h3 class="fs-6 fw-normal text-secondary text-center m-0">Enter your details to register</h3>
+                  <h2 class="fs-6 fw-normal text-center text-secondary mb-4">Enter your details to register</h2>
                 </div>
               </div>
             </div>
-            
-            
-            <form action="Register" method ="POST">
+
+            <c:if test="${not empty Rmessage}">
+              <div class="alert alert-danger text-center" role="alert">
+                  ${Rmessage}
+              </div>
+            </c:if>
+
+            <form action="${pageContext.request.contextPath}/register" method="post">
               <div class="row gy-3 overflow-hidden">
                 <div class="col-12">
                   <div class="form-floating mb-3">
-                    <input type="text" class="form-control" name="username" id="Username" placeholder="Username" required>
-                    <label for="username" class="form-label">Username</label>
-                  </div>
-                </div>
-                <div class="col-12">
-                  <div class="form-floating mb-3">
-                    <input type="password" class="form-control" name="password" id="password" placeholder="Password" required>
-                    <label for="password" class="form-label">Password</label>
+                    <input type="text" class="form-control" name="username" id="username" placeholder="Username" required>
+                    <label class="form-label">Username</label>
                   </div>
                 </div>
                 <div class="col-12">
                   <div class="form-floating mb-3">
                     <input type="email" class="form-control" name="email" id="email" placeholder="name@example.com" required>
-                    <label for="email" class="form-label">Email</label>
+                    <label class="form-label">Email</label>
                   </div>
                 </div>
-                
                 <div class="col-12">
                   <div class="form-floating mb-3">
-                    <input type="tel" class="form-control" name="phone" id="Phone-Number" value="" placeholder="Password" required>
-                    <label for="phone" class="form-label">Phone Number</label>
+                    <input type="password" class="form-control" name="password" id="password" placeholder="Password" required>
+                    <label class="form-label">Password</label>
                   </div>
                 </div>
-                	<c:set var="Rmessage" value="${requestScope.Rmessage}"/>
-				    <c:if test="${not empty Rmessage}">
-				    	<p id="error-email" style="color: red;"> ${Rmessage}</p>
-				    </c:if>
+                <div class="col-12">
+                  <div class="form-floating mb-3">
+                    <input type="password" class="form-control" name="repass" id="repass" placeholder="Confirm Password" required>
+                    <label class="form-label">Confirm Password</label>
+                  </div>
+                </div>
                 <div class="col-12">
                   <div class="form-check">
                     <input class="form-check-input" type="checkbox" value="" name="iAgree" id="iAgree" required>
@@ -79,7 +74,7 @@
                 </div>
                 <div class="col-12">
                   <div class="d-grid">
-                    <button class="btn bsb-btn-xl btn-primary" type="submit">Sign up</button>
+                    <button class="btn btn-primary btn-lg" type="submit">Sign up</button>
                   </div>
                 </div>
               </div>
@@ -87,10 +82,8 @@
             <div class="row">
               <div class="col-12">
                 <hr class="mt-5 mb-4 border-secondary-subtle">
-                <p class="m-0 text-secondary text-center">Already have an account? <a href="Login.jsp" class="link-primary text-decoration-none">Sign in</a></p>
+                <p class="m-0 text-secondary text-center">Already have an account? <a href="${pageContext.request.contextPath}/login" class="link-primary text-decoration-none">Sign in</a></p>
               </div>
-            </div>
-            <div class="row">
             </div>
           </div>
         </div>
@@ -99,8 +92,7 @@
   </div>
 </section>
 
-	<!-- footer -->
-	<%@ include file="template/includes/footer.jsp"%>
+<%@ include file="/template/includes/footer.jsp"%>
 
 </body>
 </html>
