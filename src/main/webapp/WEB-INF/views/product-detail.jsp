@@ -31,7 +31,7 @@
                         <span>$ ${product.price }</span>
                     </div>
                     <p class="lead">${not empty product.description ? product.description : 'Chưa có mô tả'}</p>
-                    <form action="addToCart" method="POST">
+                    <form action="${pageContext.request.contextPath}/addToCart" method="POST">
                         <div class="d-flex">
                             <input class="form-control text-center me-3" id="inputQuantity" name="inputQuantity"
                                    type="number" value="1" min="1" style="max-width: 3rem"
