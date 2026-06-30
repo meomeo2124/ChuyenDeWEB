@@ -9,15 +9,15 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.springframework.web.servlet.view.InternalResourceViewResolver;
 
 @Configuration
-@EnableWebMvc // Bật cấu hình Web MVC
+@EnableWebMvc
 @ComponentScan(basePackages = {"controller"}) // Thay đổi 'controller' thành package chứa các controller của bạn
 public class AppConfig implements WebMvcConfigurer {
 
-    // Cấu hình ViewResolver để trả về các trang JSP
+
     @Bean
     public InternalResourceViewResolver viewResolver() {
         InternalResourceViewResolver resolver = new InternalResourceViewResolver();
-        resolver.setPrefix("/"); // Hoặc "/WEB-INF/views/" nếu bạn chuyển JSP vào đó (khuyến nghị)
+        resolver.setPrefix("/WEB-INF/views/");
         resolver.setSuffix(".jsp");
         return resolver;
     }
