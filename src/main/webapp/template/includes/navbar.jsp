@@ -72,9 +72,7 @@
 					<div class="widget-header ">
 						<div>
 							<a href="${pageContext.request.contextPath}/login" class="btn btn-outline-dark">Login</a>
-							<a href="${pageContext.request.contextPath}/Register.jsp">
-								<button class="btn btn-outline-dark">Register</button>
-							</a>
+							<a href="${pageContext.request.contextPath}/register" class="btn btn-outline-dark">Register</a>
 						</div>
 					</div>
 				</c:otherwise>
