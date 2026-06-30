@@ -1,114 +1,120 @@
 package controller.web;
 
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
+import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.json.gson.GsonFactory; // Thay thế JacksonFactory cũ
+import dao.DBConnectionPool;
+import dao.UserDAO;
+import jakarta.servlet.http.HttpSession;
+import models.User;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
-import jakarta.servlet.http.HttpSession;
 import java.sql.Connection;
-import java.sql.SQLException;
-
-import models.User;
-import dao.UserDAO;
-import dao.DBConnectionPool;
+import java.util.Collections;
 
 @Controller
 public class AuthController {
 
-    // ================= 1. ĐĂNG NHẬP =================
+    // 1. Hiển thị trang Login
     @GetMapping("/login")
     public String showLoginPage() {
-        return "Login";
+        return "Login"; // Trỏ đến WEB-INF/views/Login.jsp
     }
 
+    // 2. Gom chung cả xử lý Login truyền thống và Google Login vào chung một Endpoint POST /login
+    // Giống hoàn toàn logic cũ trong doPost của Login.java
     @PostMapping("/login")
-    public String processLogin(
-            @RequestParam("username") String username, // Ở form Login, ô này sẽ chứa Email của người dùng
-            @RequestParam("password") String password,
+    public String handleLogin(
+            @RequestParam(value = "credential", required = false) String idTokenString,
+            @RequestParam(value = "email", required = false) String email,
+            @RequestParam(value = "password", required = false) String pass,
             HttpSession session,
             Model model) {
 
-        // Phải mở connection (try-with-resources) để truyền vào UserDAO
-        try (Connection conn = DBConnectionPool.getConnection()) {
-            UserDAO userDAO = new UserDAO(conn);
+        try (Connection connection = DBConnectionPool.getDataSource().getConnection()) {
+            UserDAO userDAO = new UserDAO(connection);
 
-            // Hàm getLogin của bạn nhận tham số là (email, password)
-            User user = userDAO.getLogin(username, password);
+            // ================= LUỒNG 1: ĐĂNG NHẬP BẰNG GOOGLE =================
+            if (idTokenString != null && !idTokenString.isEmpty()) {
 
-            if (user != null) {
-                session.setAttribute("acc", user);
-                return "redirect:/home";
+                // Đã tối ưu chuyển JacksonFactory cũ sang GsonFactory để hết cảnh báo vàng
+                GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(), GsonFactory.getDefaultInstance())
+                        .setAudience(Collections.singletonList("564628514231-g4733rfvad9m98vffpn5iofj3ht90u1t.apps.googleusercontent.com"))
+                        .build();
+
+                GoogleIdToken idToken = verifier.verify(idTokenString);
+                if (idToken != null) {
+                    GoogleIdToken.Payload payload = idToken.getPayload();
+                    String googleId = payload.getSubject();
+                    String googleEmail = payload.getEmail();
+                    String name = (String) payload.get("name");
+                    String img = (String) payload.get("picture");
+
+                    // SỬA LỖI 1: Gọi hàm chuẩn findByEmail thay vì getUserByEmail
+                    User user = userDAO.findByEmail(googleEmail);
+                    if (user == null) {
+                        user = new User();
+                        user.setGoogleId(googleId);
+                        user.setEmail(googleEmail);
+                        user.setName(name);
+                        user.setImg(img);
+                        userDAO.insertUser(user);
+                    } else if (user.getGoogleId() == null) {
+                        user.setGoogleId(googleId);
+                        userDAO.updateUserGoogleId(user);
+                    }
+
+                    // Lưu dữ liệu vào Session
+                    setSessionUser(session, user);
+                    return "redirect:/home"; // Quay về trang chủ
+                } else {
+                    return "redirect:/login?error=google_token_invalid";
+                }
+            }
+
+            // ================= LUỒNG 2: ĐĂNG NHẬP TRUYỀN THỐNG (EMAIL/PASS) =================
+            else if (email != null && pass != null) {
+                User user = userDAO.getLogin(email, pass);
+                if (user == null) {
+                    model.addAttribute("message", "Sai thông tin tài khoản mật khẩu");
+                    return "Login"; // Trả về lại trang Login kèm thông báo lỗi
+                } else {
+                    setSessionUser(session, user);
+
+                    // SỬA LỖI 2: Dùng hàm isAdmin() kiểm tra quyền thay vì setRole
+                    if (user.isAdmin()) {
+                        return "redirect:/admin/dashboard.jsp"; // Hoặc endpoint admin của bạn
+                    } else {
+                        return "redirect:/home";
+                    }
+                }
             } else {
-                model.addAttribute("message", "Sai email hoặc mật khẩu!");
-                return "Login";
+                return "redirect:/login?error=missing_credentials";
             }
 
-        } catch (SQLException e) {
+        } catch (Exception e) {
             e.printStackTrace();
-            model.addAttribute("message", "Lỗi kết nối cơ sở dữ liệu!");
+            model.addAttribute("message", "Có lỗi xảy ra trong quá trình xử lý hệ thống.");
             return "Login";
         }
     }
 
-    // ================= 2. ĐĂNG KÝ =================
-    @GetMapping("/register")
-    public String showRegisterPage() {
-        return "Register";
+    // Helper method tái sử dụng logic ghi Session dữ liệu User
+    private void setSessionUser(HttpSession session, User user) {
+        session.setAttribute("user", user);
+        session.setAttribute("userId", user.getId());
+        session.setAttribute("img", user.getImg());
     }
 
-    @PostMapping("/register")
-    public String processRegister(
-            @RequestParam("username") String username,
-            @RequestParam("password") String password,
-            @RequestParam("repass") String repass,
-            @RequestParam(value = "email", required = false) String email,
-            Model model) {
-
-        if (!password.equals(repass)) {
-            model.addAttribute("Rmessage", "Mật khẩu xác nhận không khớp!");
-            return "Register";
-        }
-
-        try (Connection conn = DBConnectionPool.getConnection()) {
-            UserDAO userDAO = new UserDAO(conn);
-
-            // 1. Kiểm tra xem Username đã bị trùng chưa
-            if (userDAO.checkUsername(username)) {
-                model.addAttribute("Rmessage", "Tên đăng nhập đã tồn tại!");
-                return "Register";
-            }
-
-            // 2. Kiểm tra xem Email đã bị trùng chưa
-            if (email != null && userDAO.checkEmailExist(email)) {
-                model.addAttribute("Rmessage", "Email này đã được sử dụng!");
-                return "Register";
-            }
-
-            // 3. Tạo đối tượng User mới và gọi hàm registerUser()
-            User newUser = new User();
-            newUser.setUsername(username);
-            newUser.setPassword(password);
-            newUser.setEmail(email);
-            newUser.setPhone(""); // Tạm thời để rỗng vì form đăng ký không có trường số điện thoại
-
-            userDAO.registerUser(newUser);
-
-            model.addAttribute("message", "Đăng ký thành công! Hãy đăng nhập.");
-            return "Login";
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-            model.addAttribute("Rmessage", "Đã xảy ra lỗi hệ thống khi đăng ký!");
-            return "Register";
-        }
-    }
-
-    // ================= 3. ĐĂNG XUẤT =================
+    // 3. Xử lý Đăng xuất
     @GetMapping("/logout")
-    public String logout(HttpSession session) {
-        session.removeAttribute("acc");
-        return "redirect:/home";
+    public String handleLogout(HttpSession session) {
+        session.invalidate();
+        return "redirect:/login";
     }
 }

@@ -36,8 +36,8 @@
 							<div class="row gy-3 overflow-hidden">
 								<div class="col-12">
 									<div class="form-floating mb-3">
-										<input type="text" class="form-control" name="username" id="username" placeholder="Username" required>
-										<label Invisible class="form-label">Username</label>
+										<input type="email" class="form-control" name="email" id="email" placeholder="name@example.com" required>
+										<label for="email" class="form-label">Email Address</label>
 									</div>
 								</div>
 								<div class="col-12">

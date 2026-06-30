@@ -1,4 +1,4 @@
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
 <!-- Navigation-->
 <nav class="navbar navbar-expand-lg navbar-light bg-light shadow">
 	<div class="container px-4 px-lg-5">
@@ -71,9 +71,8 @@
 				<c:otherwise>
 					<div class="widget-header ">
 						<div>
-							<a href="${pageContext.request.contextPath}/Login.jsp">
-								<button class="btn btn-outline-dark">Login</button>
-							</a> <a href="${pageContext.request.contextPath}/Register.jsp">
+							<a href="${pageContext.request.contextPath}/login" class="btn btn-outline-dark">Login</a>
+							<a href="${pageContext.request.contextPath}/Register.jsp">
 								<button class="btn btn-outline-dark">Register</button>
 							</a>
 						</div>
