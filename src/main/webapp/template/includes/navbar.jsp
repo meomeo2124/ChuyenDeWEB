@@ -2,7 +2,7 @@
 <!-- Navigation-->
 <nav class="navbar navbar-expand-lg navbar-light bg-light shadow">
 	<div class="container px-4 px-lg-5">
-		<a class="navbar-brand" href="${pageContext.request.contextPath}/Homepage">Boba Station</a>
+		<a class="navbar-brand" href="${pageContext.request.contextPath}/">Boba Station</a>
 		<button class="navbar-toggler" type="button" data-bs-toggle="collapse"
 			data-bs-target="#navbarSupportedContent"
 			aria-controls="navbarSupportedContent" aria-expanded="false"
@@ -18,10 +18,7 @@
 					class="nav-link dropdown-toggle" id="navbarDropdown" href="#"
 					role="button" data-bs-toggle="dropdown" aria-expanded="false">Shop</a>
 					<ul class="dropdown-menu" aria-labelledby="navbarDropdown">
-						<li><a class="dropdown-item" href="#!"
-							href="${pageContext.request.contextPath}/category?id=all">All
-								Products</a></li>
-						<li><hr class="dropdown-divider" /></li>
+						<li><a class="dropdown-item" href="${pageContext.request.contextPath}/category?id=all">All Products</a></li>
 						<li><a class="dropdown-item" href="#!">Popular Items</a></li>
 					</ul></li>
 			</ul>
@@ -42,9 +39,9 @@
 						<button class="btn dropdown-toggle d-flex align-items-center"
 							type="button" id="userDropdown" data-bs-toggle="dropdown"
 							aria-expanded="false">
-							<img style="height: 40px; width: 40px; padding: 0;"
-								class="rounded-circle me-2"
-								src="${pageContext.request.contextPath}/${userImg}" alt="avatar">
+							<img style="height: 40px; width: 40px; padding: 0;" class="rounded-circle me-2"
+							     src="${userImg.toString().contains('http') ? userImg : pageContext.request.contextPath.concat('/').concat(userImg)}"
+							     alt="avatar">
 							<span>Profile</span>
 						</button>
 						<ul class="dropdown-menu">
