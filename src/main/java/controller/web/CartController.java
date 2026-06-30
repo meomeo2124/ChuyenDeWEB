@@ -247,4 +247,59 @@ public class CartController {
             return "redirect:/login";
         }
     }
+
+    // =========================================================================
+    // 5. NẠP NHANH HTML GIỎ HÀNG (Thay thế hoàn toàn cho LoadCartServlet cũ)
+    // =========================================================================
+    @GetMapping(value = "/loadCart", produces = "text/html;charset=UTF-8")
+    @ResponseBody
+    public String ajaxLoadCartHtml(HttpSession session) {
+        Cart cart = (Cart) session.getAttribute("cart");
+        if (cart == null) {
+            return "<p class='text-center'>Giỏ hàng trống hoặc phiên làm việc đã hết hạn.</p>";
+        }
+
+        StringBuilder htmlBuilder = new StringBuilder();
+
+        try (Connection connection = DBConnectionPool.getDataSource().getConnection()) {
+            CartDAO cartDAO = new CartDAO(connection);
+            java.util.List<models.CartItem> list = cartDAO.getCartItems(cart.getCartId());
+
+            for (models.CartItem ci : list) {
+                htmlBuilder.append("<div class=\"row cart-item mb-3\">\r\n")
+                        .append("    <div class=\"col-md-3\">\r\n")
+                        .append("        <img src=\"").append(session.getServletContext().getContextPath()).append("/image/product/").append(ci.getProduct().getPhoto()).append("\"\r\n")
+                        .append("             alt=\"").append(ci.getProduct().getName()).append("\" class=\"img-fluid rounded\">\r\n")
+                        .append("    </div>\r\n")
+                        .append("    <div class=\"col-md-5\">\r\n")
+                        .append("        <h5 class=\"card-title\">").append(ci.getProduct().getName()).append("</h5>\r\n")
+                        .append("        <p class=\"text-muted\">Category: ").append(ci.getProduct().getName()).append("</p>\r\n")
+                        .append("    </div>\r\n")
+                        .append("    <div class=\"col-md-2\">\r\n")
+                        .append("        <div class=\"input-group\">\r\n")
+                        .append("            <button class=\"btn btn-outline-secondary btn-sm\" type=\"button\" onclick=\"changeQuantity(-1, this)\">-</button>\r\n")
+                        .append("            <input style=\"max-width: 100px\" type=\"number\"\r\n")
+                        .append("                   class=\"form-control form-control-sm text-center quantity-input\"\r\n")
+                        .append("                   onchange=\"updateQuantity()\"\r\n")
+                        .append("                   value=\"").append(ci.getQuantity()).append("\" min=\"1\"/>\r\n")
+                        .append("            <button class=\"btn btn-outline-secondary btn-sm\" type=\"button\" onclick=\"changeQuantity(1, this)\">+</button> \r\n")
+                        .append("        </div>\r\n")
+                        .append("    </div>\r\n")
+                        .append("    <div class=\"col-md-2 text-end\">\r\n")
+                        .append("        <p class=\"fw-bold\">$ ").append(ci.getProduct().getPrice()).append("</p>\r\n")
+                        .append("        <button class=\"btn btn-sm btn-outline-danger\" onclick=\"removeItem(").append(ci.getProduct().getId()).append(")\"> \r\n")
+                        .append("            <i class=\"bi bi-trash\"></i>\r\n")
+                        .append("        </button>\r\n")
+                        .append("    </div>\r\n")
+                        .append("</div>\r\n")
+                        .append("<hr>");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return "<p class='text-danger text-center'>Lỗi tải dữ liệu giỏ hàng.</p>";
+        }
+
+        return htmlBuilder.toString();
+    }
+
 }
