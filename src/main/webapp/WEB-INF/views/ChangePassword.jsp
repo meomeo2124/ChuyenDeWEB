@@ -4,15 +4,14 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<link href="css/styles.css" rel="stylesheet" />
-<title>Insert title here</title>
+	<link href="${pageContext.request.contextPath}/css/styles.css" rel="stylesheet" />
+	<title>Insert title here</title>
 </head>
 <body>
 
 
 	<!-- Navbar -->
-	<%@ include file="template/includes/navbar.jsp"%>
-
+	<%@ include file="/template/includes/navbar.jsp"%>
 
 	<section class="bg-light py-3 py-md-5">
 		<div class="container">
@@ -27,7 +26,7 @@
 							</div>
 							<div class="row justify-content-center">
 								<p class="text-center">Change your password.</p>
-								<form method="post" Action="ChangePassword">
+								<form method="post" action="${pageContext.request.contextPath}/ChangePassword">
 									<input type="password" class="input-lg form-control"
 										name="password1" id="password1" placeholder="New Password"
 										autocomplete="off"> 
@@ -48,8 +47,7 @@
 		</div>
 	</section>
 
-	<%@ include file="template/includes/footer.jsp"%>
-
+	<%@ include file="/template/includes/footer.jsp"%>
 
 </body>
 </html>

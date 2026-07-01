@@ -96,13 +96,11 @@
 												<div class="col-xl-12 col-lg-12 col-md-12 col-sm-12 col-12">
 													<div class="col-6">
 														<div class="my-3">
-															<button class="btn btn-primary btn-lg" type="submit">update
-																profile</button>
+															<button class="btn btn-primary btn-lg" type="submit">update profile</button>
 														</div>
 														<div class="my-3">
-															<a
-																href="${pageContext.request.contextPath}/UploadServlet"
-																class="btn btn-primary btn-lg">Change Avatar</a>
+															<a href="${pageContext.request.contextPath}/UploadServlet" class="btn btn-outline-secondary btn-lg">Change Avatar</a>
+															<a href="${pageContext.request.contextPath}/ChangePassword" class="btn btn-warning btn-lg ms-2">Change Password</a>
 														</div>
 													</div>
 												</div>
