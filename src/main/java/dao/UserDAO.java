@@ -261,7 +261,8 @@ public class UserDAO {
 	}
 
 	public boolean insertUser(User user) {
-		String sql = "INSERT INTO `dbo.users` (username, email, phone, address) VALUES (?, ?, ?, ?)";
+		// Tìm câu lệnh SQL INSERT cũ, sửa cột 'phone' thành 'phone_number'
+		String sql = "INSERT INTO `dbo.users` (username, password, email, address, is_admin, images, phone_number) VALUES (?, ?, ?, ?, ?, ?, ?)";
 		try (Connection connection = DBConnectionPool.getConnection();
 			 PreparedStatement stmt = connection.prepareStatement(sql)) {
 

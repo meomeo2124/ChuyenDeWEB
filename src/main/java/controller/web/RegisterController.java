@@ -1,69 +1,82 @@
 package controller.web;
 
-import dao.DBConnectionPool;
 import dao.UserDAO;
+import dao.DBConnectionPool;
+import jakarta.servlet.http.HttpSession;
 import models.User;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import utool.HelperClass;
+import utool.JavaMailUtil;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 
 @Controller
 public class RegisterController {
 
-    // 1. Hiển thị trang Đăng ký
+    // 1. BỔ SUNG: Hiển thị trang đăng ký (Xử lý request GET khi click từ Login sang)
     @GetMapping("/register")
-    public String showRegisterPage() {
-        return "Register"; // Tìm file WEB-INF/views/Register.jsp
+    public String showRegisterPage(@RequestParam(value = "error", required = false) String error, Model model) {
+        if (error != null) {
+            model.addAttribute("error", error); // Hứng thông báo lỗi nếu có
+        }
+        return "Register"; // Trỏ đến /WEB-INF/views/Register.jsp
     }
 
-    // 2. Tiếp nhận dữ liệu từ Form Đăng ký
+    // 2. Xử lý dữ liệu form đăng ký gửi lên bằng POST
     @PostMapping("/register")
-    public String handleRegister(
-            @RequestParam("username") String username,
-            @RequestParam("email") String email,
-            @RequestParam("password") String pass,
-            @RequestParam("repass") String repass,
-            Model model) {
-
-        // Kiểm tra mật khẩu nhập lại có khớp không
-        if (!pass.equals(repass)) {
-            model.addAttribute("Rmessage", "Mật khẩu xác nhận không trùng khớp!");
-            return "Register";
-        }
+    public String handleRegister(@RequestParam("username") String username,
+                                 @RequestParam("password") String password,
+                                 @RequestParam("email") String email,
+                                 @RequestParam("address") String address,
+                                 @RequestParam("phone_number") String phoneNumber,
+                                 HttpSession session) {
 
         try (Connection connection = DBConnectionPool.getDataSource().getConnection()) {
-            UserDAO userDAO = new UserDAO(connection);
+            UserDAO userdao = new UserDAO(connection);
 
-            // Kiểm tra xem email này đã tồn tại chưa
-            User existingUser = userDAO.findByEmail(email);
-            if (existingUser != null) {
-                model.addAttribute("Rmessage", "Email này đã tồn tại trong hệ thống!");
-                return "Register";
+            // Kiểm tra email tồn tại
+            if (userdao.findByEmail(email) != null) {
+                // ĐÃ SỬA: Redirect về GET kèm thông báo lỗi để tránh kẹt trạng thái POST
+                String errMsg = URLEncoder.encode("Email này đã được đăng ký!", StandardCharsets.UTF_8);
+                return "redirect:/register?error=" + errMsg;
             }
 
-            // Tiến hành tạo mới tài khoản
-            User newUser = new User();
-            newUser.setName(username); // Gán trường username vào cột Name của đối tượng User
-            newUser.setEmail(email);
+            // Map dữ liệu vào User tạm
+            User tempUser = new User();
+            tempUser.setUsername(username);
+            tempUser.setPassword(password);
+            tempUser.setEmail(email);
+            tempUser.setAddress(address);
+            tempUser.setPhone(phoneNumber);
+            tempUser.setIsAdmin(false);
+            tempUser.setImg("image/avatars/default-avatar.png");
 
-            // LƯU Ý: Nếu hệ thống cũ của bạn cần setPassword trực tiếp, hãy uncomment dòng dưới:
-            // newUser.setPassword(pass);
+            // Sinh mã OTP và lưu Session
+            int authCode = HelperClass.generateRandom();
+            session.setAttribute("authCode", authCode);
+            session.setAttribute("tempUser", tempUser);
 
-            // Gọi hàm lưu của dự án cũ
-            userDAO.insertUser(newUser);
+            // Gửi email bất đồng bộ
+            new Thread(() -> {
+                try {
+                    JavaMailUtil.sendEmail(email, authCode);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }).start();
 
-            // Đăng ký thành công -> Đưa qua trang login kèm thông báo
-            model.addAttribute("message", "Đăng ký thành công! Vui lòng đăng nhập.");
-            return "Login";
+            // ĐÃ SỬA: Redirect chuẩn sang trang nhập mã OTP thay vì return View trực tiếp
+            return "redirect:/getAuthCode";
 
         } catch (Exception e) {
-            e.printStackTrace();
-            model.addAttribute("Rmessage", "Có lỗi xảy ra trong quá trình xử lý hệ thống.");
-            return "Register";
+            String errMsg = URLEncoder.encode("Lỗi hệ thống: " + e.getMessage(), StandardCharsets.UTF_8);
+            return "redirect:/register?error=" + errMsg;
         }
     }
 }
