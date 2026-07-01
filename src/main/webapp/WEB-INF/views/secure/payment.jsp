@@ -1,6 +1,6 @@
-<%@ page contentType="text/html;charset=UTF-8" language="java" %>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt" %>
+<%@ page pageEncoding="UTF-8" language="java" %>
+<%@ taglib uri="jakarta.tags.core" prefix="c" %>
+<%@ taglib uri="jakarta.tags.fmt" prefix="fmt" %>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -44,7 +44,8 @@
 					</tr>
 					</thead>
 					<tbody>
-					<c:forEach var="cartItem" items="${sessionScope.cart.items.values()}">
+						<%-- SỬA ĐỔI: Sử dụng .values thay vì .values() để bảo đảm JSTL biên dịch mượt mà --%>
+					<c:forEach var="cartItem" items="${sessionScope.cart.items.values}">
 						<tr>
 							<td>${cartItem.product.name}</td>
 							<td>${cartItem.quantity}</td>

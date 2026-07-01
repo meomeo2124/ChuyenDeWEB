@@ -32,9 +32,10 @@
               </div>
             </div>
 
-            <c:if test="${not empty Rmessage}">
+            <%-- ĐÃ SỬA: Đổi từ Rmessage thành error để khớp với Controller --%>
+            <c:if test="${not empty error}">
               <div class="alert alert-danger text-center" role="alert">
-                  ${Rmessage}
+                  ${error}
               </div>
             </c:if>
 
@@ -52,6 +53,23 @@
                     <label class="form-label">Email</label>
                   </div>
                 </div>
+
+                <%-- ĐÃ BỔ SUNG: Ô nhập số điện thoại --%>
+                <div class="col-12">
+                  <div class="form-floating mb-3">
+                    <input type="text" class="form-control" name="phone_number" id="phone_number" placeholder="Phone Number" required>
+                    <label class="form-label">Phone Number</label>
+                  </div>
+                </div>
+
+                <%-- ĐÃ BỔ SUNG: Ô nhập địa chỉ --%>
+                <div class="col-12">
+                  <div class="form-floating mb-3">
+                    <input type="text" class="form-control" name="address" id="address" placeholder="Address" required>
+                    <label class="form-label">Address</label>
+                  </div>
+                </div>
+
                 <div class="col-12">
                   <div class="form-floating mb-3">
                     <input type="password" class="form-control" name="password" id="password" placeholder="Password" required>
