@@ -14,6 +14,8 @@ import models.OrderItem;
 import models.Product;
 
 public class OrderDAO {
+
+    // SỬA ĐỔI: Bỏ hẳn tham số hoặc bỏ gán payment_method vào SQL vì Database không có
     public int createOrder(int userId, double totalPrice, String paymentMethod) throws SQLException {
         Connection conn = null;
         PreparedStatement pstmt = null;
@@ -23,13 +25,13 @@ public class OrderDAO {
             conn = DBConnectionPool.getConnection();
             conn.setAutoCommit(false);
 
-            String insertOrderSQL = "INSERT INTO `dbo.orders` (user_id, total, payment_method, status, created_at) VALUES (?, ?, ?, ?, ?)";
+            // ĐÃ SỬA: Loại bỏ cột payment_method và dấu hỏi chấm tương ứng
+            String insertOrderSQL = "INSERT INTO `dbo.orders` (user_id, total, status, created_at) VALUES (?, ?, ?, ?)";
             pstmt = conn.prepareStatement(insertOrderSQL, PreparedStatement.RETURN_GENERATED_KEYS);
             pstmt.setInt(1, userId);
             pstmt.setDouble(2, totalPrice);
-            pstmt.setString(3, paymentMethod != null ? paymentMethod : "UNKNOWN");
-            pstmt.setString(4, "PENDING");
-            pstmt.setTimestamp(5, new Timestamp(System.currentTimeMillis()));
+            pstmt.setString(3, "PENDING");
+            pstmt.setTimestamp(4, new Timestamp(System.currentTimeMillis()));
             pstmt.executeUpdate();
 
             try (var rs = pstmt.getGeneratedKeys()) {
@@ -99,7 +101,9 @@ public class OrderDAO {
 
         try {
             conn = DBConnectionPool.getConnection();
-            String selectOrderSQL = "SELECT id, user_id, total, payment_method, status, created_at FROM `dbo.orders` WHERE id = ?";
+
+            // ĐÃ SỬA: Loại bỏ cột payment_method khỏi câu lệnh SELECT
+            String selectOrderSQL = "SELECT id, user_id, total, status, created_at FROM `dbo.orders` WHERE id = ?";
             pstmt = conn.prepareStatement(selectOrderSQL);
             pstmt.setInt(1, orderId);
             rs = pstmt.executeQuery();
@@ -109,7 +113,10 @@ public class OrderDAO {
                 order.setId(rs.getInt("id"));
                 order.setUserId(rs.getInt("user_id"));
                 order.setTotalPrice(rs.getDouble("total"));
-                order.setPaymentMethod(rs.getString("payment_method") != null ? rs.getString("payment_method") : "UNKNOWN");
+
+                // Mặc định gán chuỗi để tránh lỗi NullPointerException trên giao diện hiển thị
+                order.setPaymentMethod("CASH");
+
                 order.setStatus(rs.getString("status"));
                 order.setOrderDate(rs.getTimestamp("created_at"));
 
