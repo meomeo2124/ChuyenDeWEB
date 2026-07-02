@@ -66,10 +66,14 @@
             </tr>
             </thead>
             <tbody>
-            <%-- SỬA ĐỔI: Sử dụng c:forEach để duyệt danh sách thực tế từ Database gửi lên thay vì dữ liệu cứng --%>
             <c:forEach var="p" items="${products}">
                 <tr>
-                    <td><img src="${pageContext.request.contextPath}/${p.img}" alt="Product" class="avatar" style="width:30px; height:30px; object-fit:cover;"></td>
+                    <td>
+                            <%-- ĐÃ SỬA: Chuyển đổi từ ${p.img} sang ${p.photo} cho khớp với cấu trúc Model Product của bạn --%>
+                        <img src="${pageContext.request.contextPath}/image/product/${not empty p.photo ? p.photo : 'no-sample.png'}"
+                             alt="Product" class="avatar" style="width:30px; height:30px; object-fit:cover;"
+                             onerror="this.src='${pageContext.request.contextPath}/image/product/no-sample.png';">
+                    </td>
                     <td><c:out value="${p.name}"/></td>
                     <td>${p.price} VNĐ</td>
                     <td>
