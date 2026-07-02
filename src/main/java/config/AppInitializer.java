@@ -1,5 +1,7 @@
 package config;
 
+import jakarta.servlet.MultipartConfigElement;
+import jakarta.servlet.ServletRegistration;
 import org.springframework.web.servlet.support.AbstractAnnotationConfigDispatcherServletInitializer;
 
 public class AppInitializer extends AbstractAnnotationConfigDispatcherServletInitializer {
@@ -16,7 +18,17 @@ public class AppInitializer extends AbstractAnnotationConfigDispatcherServletIni
 
     @Override
     protected String[] getServletMappings() {
-        // Ánh xạ mọi yêu cầu đến DispatcherServlet
         return new String[]{"/"};
+    }
+
+    @Override
+    protected void customizeRegistration(ServletRegistration.Dynamic registration) {
+        MultipartConfigElement multipartConfigElement = new MultipartConfigElement(
+                "",
+                1024 * 1024 * 10,  // Tối đa 10MB/file
+                1024 * 1024 * 50,  // Tối đa 50MB/request
+                1024 * 1024 * 2    // Kích thước vùng đệm 2MB
+        );
+        registration.setMultipartConfig(multipartConfigElement);
     }
 }
