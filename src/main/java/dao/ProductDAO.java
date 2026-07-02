@@ -12,39 +12,16 @@ import models.Category;
 import models.Product;
 
 public class ProductDAO {
-    private Connection connection;
+    private Connection con;
 
     public ProductDAO(Connection connection) {
-        this.connection = connection;
+        this.con = connection;
     }
 
     public ProductDAO() {
     }
 
-    public static void main(String[] args) {
-        ProductDAO dao = new ProductDAO();
-        try {
-            List<Product> products = dao.getAllProducts();
-            if (products.isEmpty()) {
-                System.out.println("Không có sản phẩm nào trong cơ sở dữ liệu.");
-            } else {
-                for (Product product : products) {
-                    System.out.println("ID: " + product.getId());
-                    System.out.println("Tên: " + product.getName());
-                    System.out.println("Mô tả: " + product.getDescription());
-                    System.out.println("Ảnh: " + product.getPhoto());
-                    System.out.println("Giá: " + product.getPrice());
-                    System.out.println("Danh mục: " + 
-                        (product.getCategory() != null ? product.getCategory().getTitle() : "Không rõ"));
-                    System.out.println("-----------------------------");
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    // Lấy sản phẩm theo ID
+    // 1. Lấy sản phẩm theo ID
     public Product getProductById(int id) {
         Product product = null;
         String sql = "SELECT * FROM `dbo.product` WHERE id = ?";
@@ -72,9 +49,9 @@ public class ProductDAO {
         return product;
     }
 
-    // Thêm sản phẩm mới
+    // 2. Thêm sản phẩm mới (ĐÃ BỔ SUNG CỘT category_id)
     public void addProduct(Product product) throws SQLException {
-        String query = "INSERT INTO `dbo.product` (product_name, description, images, price, stock) VALUES (?, ?, ?, ?, ?)";
+        String query = "INSERT INTO `dbo.product` (product_name, description, images, price, stock, category_id) VALUES (?, ?, ?, ?, ?, ?)";
         try (Connection connection = DBConnectionPool.getDataSource().getConnection();
              PreparedStatement statement = connection.prepareStatement(query)) {
             statement.setString(1, product.getName());
@@ -82,11 +59,19 @@ public class ProductDAO {
             statement.setString(3, product.getPhoto() != null ? product.getPhoto() : "default.jpg");
             statement.setDouble(4, product.getPrice());
             statement.setInt(5, product.getStock());
+
+            // Tham số thứ 6: category_id
+            if (product.getCategory() != null) {
+                statement.setInt(6, product.getCategory().getId());
+            } else {
+                statement.setNull(6, java.sql.Types.INTEGER);
+            }
+
             statement.executeUpdate();
         }
     }
 
-    // Lấy tất cả sản phẩm
+    // 3. Lấy tất cả sản phẩm
     public List<Product> getAllProducts() {
         List<Product> products = new ArrayList<>();
         String sql = "SELECT * FROM `dbo.product`";
@@ -114,9 +99,9 @@ public class ProductDAO {
         return products;
     }
 
-    // Cập nhật thông tin sản phẩm
+    // 4. Cập nhật thông tin sản phẩm (ĐÃ ĐỒNG BỘ CỘT stock VÀ category_id)
     public void updateProduct(Product product) {
-        String sql = "UPDATE `dbo.product` SET product_name = ?, description = ?, images = ?, price = ?, stock = ? WHERE id = ?";
+        String sql = "UPDATE `dbo.product` SET product_name = ?, description = ?, images = ?, price = ?, stock = ?, category_id = ? WHERE id = ?";
         try (Connection connection = DBConnectionPool.getDataSource().getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, product.getName());
@@ -124,7 +109,17 @@ public class ProductDAO {
             statement.setString(3, product.getPhoto());
             statement.setDouble(4, product.getPrice());
             statement.setInt(5, product.getStock());
-            statement.setInt(6, product.getId());
+
+            // Tham số thứ 6: category_id
+            if (product.getCategory() != null) {
+                statement.setInt(6, product.getCategory().getId());
+            } else {
+                statement.setNull(6, java.sql.Types.INTEGER);
+            }
+
+            // Tham số thứ 7: id điều kiện WHERE
+            statement.setInt(7, product.getId());
+
             statement.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -132,7 +127,7 @@ public class ProductDAO {
         }
     }
 
-    // Xóa sản phẩm
+    // 5. Xóa sản phẩm
     public void deleteProduct(int id) {
         String sql = "DELETE FROM `dbo.product` WHERE id = ?";
         try (Connection connection = DBConnectionPool.getDataSource().getConnection();
@@ -146,7 +141,7 @@ public class ProductDAO {
     }
 
     // Helper method để lấy thông tin Category theo ID
-    private Category getCategoryById(int categoryId) {
+    public Category getCategoryById(int categoryId) {
         Category category = null;
         String sql = "SELECT * FROM `dbo.product_categories` WHERE id = ?";
         try (Connection connection = DBConnectionPool.getDataSource().getConnection();
@@ -155,13 +150,13 @@ public class ProductDAO {
             ResultSet resultSet = statement.executeQuery();
             if (resultSet.next()) {
                 category = new Category();
-                category.setId(resultSet.getInt("id"));
+                category.setId(resultSet.getShort("id")); // Hoặc getInt tùy thuộc kiểu dữ liệu Model của bạn
                 category.setTitle(resultSet.getString("category_name"));
                 category.setDescription(resultSet.getString("description"));
             }
         } catch (SQLException e) {
             e.printStackTrace();
-            throw new RuntimeException("Lỗi khi lấy danh mục theo ID: " + e.getMessage(), e); // Thêm ném ngoại lệ
+            throw new RuntimeException("Lỗi khi lấy danh mục theo ID: " + e.getMessage(), e);
         }
         return category;
     }
@@ -204,7 +199,7 @@ public class ProductDAO {
                 product.setPrice(rs.getDouble("price"));
                 product.setStock(rs.getInt("stock"));
 
-                Category category = getCategoryById(categoryId); // Sửa để lấy category chính xác
+                Category category = getCategoryById(categoryId);
                 product.setCategory(category);
                 productList.add(product);
             }
@@ -279,7 +274,7 @@ public class ProductDAO {
     // Lấy top 4 sản phẩm
     public List<Product> getTop4() {
         List<Product> list = new ArrayList<>();
-        String sql = "SELECT TOP 4 * FROM `dbo.product`"; // Giữ TOP 4 cho SQL Server
+        String sql = "SELECT TOP 4 * FROM `dbo.product`";
         try (Connection connection = DBConnectionPool.getDataSource().getConnection();
              PreparedStatement statement = connection.prepareStatement(sql);
              ResultSet resultSet = statement.executeQuery()) {
@@ -305,10 +300,10 @@ public class ProductDAO {
         return list;
     }
 
-    // Lấy 3 sản phẩm tiếp theo (phân trang)
+    // Lấy sản phẩm tiếp theo (phân trang)
     public List<Product> getNext4(int amount) {
         List<Product> list = new ArrayList<>();
-        String sql = "SELECT * FROM `dbo.product` ORDER BY id OFFSET ? ROWS FETCH NEXT 3 ROWS ONLY"; // Giữ cú pháp SQL Server
+        String sql = "SELECT * FROM `dbo.product` ORDER BY id OFFSET ? ROWS FETCH NEXT 3 ROWS ONLY";
         try (Connection connection = DBConnectionPool.getDataSource().getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setInt(1, amount);
@@ -335,7 +330,7 @@ public class ProductDAO {
         return list;
     }
 
-    // Tính tổng doanh thu (giả định từ giá sản phẩm)
+    // Tính tổng doanh thu
     public double getTotalRevenue() {
         double totalRevenue = 0;
         String query = "SELECT SUM(price) AS totalRevenue FROM `dbo.product`";
