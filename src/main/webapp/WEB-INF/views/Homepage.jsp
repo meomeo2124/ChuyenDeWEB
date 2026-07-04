@@ -1,4 +1,6 @@
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<%-- 1. BỔ SUNG KHAI BÁO THƯ VIỆN FORMAT CHUẨN JAKARTA Ở ĐÂY --%>
+<%@ taglib prefix="fmt" uri="jakarta.tags.fmt" %>
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <!DOCTYPE html>
 <html>
@@ -32,19 +34,26 @@
                                             <a href="${pageContext.request.contextPath}/product?id=${product.id}" class="text-decoration-none text-dark">
                                                     ${product.name}
                                             </a>
-                                        </h5>                                        <div class="d-flex justify-content-center small text-warning mb-2">
+                                        </h5>
+                                        <div class="d-flex justify-content-center small text-warning mb-2">
                                             <div class="bi-star-fill">*</div>
                                             <div class="bi-star-fill">*</div>
                                             <div class="bi-star-fill">*</div>
                                             <div class="bi-star-fill">*</div>
                                             <div class="bi-star-fill">*</div>
                                         </div>
-                                        $ ${product.price != null ? product.price : 0.0}
+
+                                            <%-- 2. ĐÃ ĐỔI $ THÀNH ĐỊNH DẠNG VNĐ Ở ĐÂY --%>
+                                        <span class="text-primary fw-bold border-top pt-2 d-inline-block w-100">
+                                            <fmt:formatNumber value="${product.price != null ? product.price : 0.0}" pattern="#,###" /> VNĐ
+                                        </span>
+
                                     </div>
                                 </div>
                                 <div class="card-footer p-4 pt-0 border-top-0 bg-transparent">
                                     <div class="text-center">
-                                        <a class="btn btn-outline-dark mt-auto" href="${pageContext.request.contextPath}/product?id=${product.id}">View options</a>                                    </div>
+                                        <a class="btn btn-outline-dark mt-auto" href="${pageContext.request.contextPath}/product?id=${product.id}">View options</a>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -70,7 +79,6 @@
     function loadMore() {
         var amount = document.getElementsByClassName("product-count").length;
         $.ajax({
-            // Đã cập nhật lại URL có chứa contextPath để tránh lỗi 404 khi nhấn "Show More"
             url: "${pageContext.request.contextPath}/load",
             type: "GET",
             data: {

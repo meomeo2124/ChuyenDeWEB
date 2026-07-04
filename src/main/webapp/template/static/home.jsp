@@ -36,10 +36,10 @@
                                 <!-- Product details -->
                                 <div class="card-body p-4">
                                     <div class="text-center">
-                                        <!-- Product name -->
                                         <h5 class="fw-bolder">${product.name}</h5>
-                                        <!-- Product price -->
-                                        $ ${product.price}
+                                        <span class="text-primary fw-bold">
+            <fmt:formatNumber value="${product.price}" pattern="#,###" /> VNĐ
+        </span>
                                     </div>
                                 </div>
                                 <!-- Product actions -->

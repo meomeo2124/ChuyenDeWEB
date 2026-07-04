@@ -1,7 +1,9 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
-<%@ taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt"%>
+<%@ taglib uri="jakarta.tags.fmt" prefix="fmt"%>
+<fmt:setLocale value="vi_VN" />
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -38,51 +40,55 @@
 					<c:choose>
 						<c:when test="${not empty cart.items}">
 							<c:forEach var="cartItem" items="${cart.items.values()}">
-							<div id="row-${cartItem.product.id}" class="cart-item mb-3">
-								<div class="row align-items-center">
-									<div class="col-md-3">
-										<img src="${pageContext.request.contextPath}/image/product/${cartItem.product.photo}"
-										     alt="${cartItem.product.name}" class="img-fluid rounded">
-									</div>
-									<div class="col-md-4">
-										<h5 class="card-title">${cartItem.product.name}</h5>
-										<p class="text-muted">Category: ${cartItem.product.category}</p>
-									</div>
-									<div class="col-md-2">
-										<div class="input-group">
-											<button class="btn btn-outline-secondary btn-sm" type="button"
-											        onclick="changeQuantity(${cartItem.product.id}, -1)">-</button>
-											<input type="number" class="form-control form-control-sm text-center quantity-input"
-											       id="quantity-${cartItem.product.id}"
-											       onchange="updateQuantity(${cartItem.product.id}, this.value)"
-											       value="${cartItem.quantity}" min="1"
-											       max="${cartItem.product.stock}"
-											       data-price="${cartItem.product.price}"
-											       data-original-quantity="${cartItem.quantity}">
-											<button class="btn btn-outline-secondary btn-sm" type="button"
-											        onclick="changeQuantity(${cartItem.product.id}, 1)">+</button>
+								<div id="row-${cartItem.product.id}" class="cart-item mb-3">
+									<div class="row align-items-center">
+										<div class="col-md-3">
+											<img src="${pageContext.request.contextPath}/image/product/${cartItem.product.photo}"
+												 alt="${cartItem.product.name}" class="img-fluid rounded">
+										</div>
+										<div class="col-md-4">
+											<h5 class="card-title">${cartItem.product.name}</h5>
+											<p class="text-muted">Category: ${cartItem.product.category}</p>
+										</div>
+										<div class="col-md-2">
+											<div class="input-group">
+												<button class="btn btn-outline-secondary btn-sm" type="button"
+														onclick="changeQuantity(${cartItem.product.id}, -1)">-</button>
+												<input type="number" class="form-control form-control-sm text-center quantity-input"
+													   id="quantity-${cartItem.product.id}"
+													   onchange="updateQuantity(${cartItem.product.id}, this.value)"
+													   value="${cartItem.quantity}" min="1"
+													   max="${cartItem.product.stock}"
+													   data-price="${cartItem.product.price}"
+													   data-original-quantity="${cartItem.quantity}">
+												<button class="btn btn-outline-secondary btn-sm" type="button"
+														onclick="changeQuantity(${cartItem.product.id}, 1)">+</button>
+											</div>
+										</div>
+										<div class="col-md-2 text-end">
+											<p class="fw-bold">
+                                   <span id="item-total-${cartItem.product.id}">
+                                       <fmt:formatNumber value="${cartItem.product.price * cartItem.quantity}" pattern="#,###" />
+                                   </span> VNĐ
+											</p>
+										</div>
+										<div class="col-md-1">
+											<button class="btn btn-sm btn-outline-danger" onclick="removeItem(${cartItem.product.id})">
+												<i class="bi bi-trash"></i>
+											</button>
 										</div>
 									</div>
-									<div class="col-md-2 text-end">
-										<p class="fw-bold">$ <span id="item-total-${cartItem.product.id}">${cartItem.product.price * cartItem.quantity}</span></p>
-									</div>
-									<div class="col-md-1">
-										<button class="btn btn-sm btn-outline-danger" onclick="removeItem(${cartItem.product.id})">
-											<i class="bi bi-trash"></i>
-										</button>
-									</div>
+									<hr>
 								</div>
-								<hr>
+							</c:forEach>
+						</c:when>
+						<c:otherwise>
+							<div id="empty-cart-msg" class="row cart-item mb-3">
+								<div class="col-md-12 text-center py-4">
+									<h5 class="card-title text-muted">Your Cart Is Empty</h5>
+								</div>
 							</div>
-						</c:forEach>
-					</c:when>
-					<c:otherwise>
-						<div id="empty-cart-msg" class="row cart-item mb-3">
-							<div class="col-md-12 text-center py-4">
-								<h5 class="card-title text-muted">Your Cart Is Empty</h5>
-							</div>
-						</div>
-					</c:otherwise>
+						</c:otherwise>
 					</c:choose>
 				</div>
 			</div>
@@ -104,27 +110,29 @@
 							<input type="hidden" name="quantities" value="${cartItem.quantity}">
 							<input type="hidden" name="prices" value="${cartItem.product.price}">
 						</c:forEach>
+
+						<%-- Đổi cứng phí ship 10 đô thành 15000 VNĐ --%>
 						<input type="hidden" name="subtotal" value="${cart.totalPrice}">
-						<input type="hidden" name="shipping" value="${cart.totalPrice > 0 ? 10.00 : 0.00}">
-						<input type="hidden" name="total" value="${cart.totalPrice + (cart.totalPrice > 0 ? 10.00 : 0.00)}">
+						<input type="hidden" name="shipping" value="${cart.totalPrice > 0 ? 15000 : 0}">
+						<input type="hidden" name="total" value="${cart.totalPrice + (cart.totalPrice > 0 ? 15000 : 0)}">
 
 						<div class="d-flex justify-content-between mb-3">
 							<span>Subtotal</span>
 							<span id="subtotal" class="subtotal">
-									<fmt:formatNumber value="${cart.totalPrice}" type="currency" />
-								</span>
+                            <fmt:formatNumber value="${cart.totalPrice}" pattern="#,###" /> VNĐ
+                         </span>
 						</div>
 						<div class="d-flex justify-content-between mb-3">
 							<span>Shipping</span>
 							<span id="shipping" class="shipping">
-									<fmt:formatNumber value="${cart.totalPrice > 0 ? 10.00 : 0.00}" type="currency" />
-								</span>
+                            <fmt:formatNumber value="${cart.totalPrice > 0 ? 15000 : 0}" pattern="#,###" /> VNĐ
+                         </span>
 						</div>
 						<hr>
 						<div class="d-flex justify-content-between mb-4">
 							<strong>Total</strong>
 							<strong id="total" class="total">
-								<fmt:formatNumber value="${cart.totalPrice + (cart.totalPrice > 0 ? 10.00 : 0.00)}" type="currency" />
+								<fmt:formatNumber value="${cart.totalPrice + (cart.totalPrice > 0 ? 15000 : 0)}" pattern="#,###" /> VNĐ
 							</strong>
 						</div>
 						<c:choose>
@@ -161,7 +169,12 @@
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
-	// 1. HÀM XÓA SẢN PHẨM KHỎI GIỎ HÀNG (SỬ DỤNG HIỆU ỨNG TRỰC TIẾP TRÊN FRONT-END)
+	// Hàm định dạng số có dấu chấm kiểu VN (ví dụ: 35.000)
+	function formatCurrencyVN(amount) {
+		return amount.toLocaleString('vi-VN') + " VNĐ";
+	}
+
+	// 1. HÀM XÓA SẢN PHẨM KHỎI GIỎ HÀNG
 	function removeItem(productId) {
 		$.ajax({
 			url: "${pageContext.request.contextPath}/secure/cart?action=removeItem",
@@ -169,17 +182,15 @@
 			data: { id: productId },
 			success: function(response) {
 				if(response.success) {
-					// Cập nhật lại 3 ô tiền tổng ở cột bên phải
-					$("#subtotal").text("$" + response.subtotal.toFixed(2));
-					$("#shipping").text("$" + response.shipping.toFixed(2));
-					$("#total").text("$" + response.total.toFixed(2));
+					// Đã chuyển định dạng sang tiền Việt
+					$("#subtotal").text(formatCurrencyVN(response.subtotal));
+					$("#shipping").text(formatCurrencyVN(response.shipping));
+					$("#total").text(formatCurrencyVN(response.total));
 
-					// Hiệu ứng FadeOut mượt mà xóa hàng thô ra khỏi giao diện trực tiếp
 					$("#row-" + productId).fadeOut(300, function() {
 						$(this).remove();
-						// Nếu xóa hết sạch hàng, hiển thị thông báo giỏ hàng trống
 						if ($(".cart-item").length === 0) {
-							location.reload(); // Refresh nhẹ để hiển thị trạng thái Empty sạch sẽ
+							location.reload();
 						}
 					});
 				} else {
@@ -210,9 +221,9 @@
 				var data = typeof response === 'string' ? JSON.parse(response) : response;
 				if (data.success) {
 					input.val(newQuantity);
-					// Cập nhật giá tổng của riêng sản phẩm đó dòng đó
-					$('#item-total-' + productId).text((newQuantity * price).toFixed(2));
-					// Cập nhật bảng tổng tiền hóa đơn
+					// Cập nhật giá tổng của riêng sản phẩm đó bằng toLocaleString thay vì toFixed
+					$('#item-total-' + productId).text((newQuantity * price).toLocaleString('vi-VN'));
+
 					updateSummary(data);
 					checkCheckoutButton(data.subtotal);
 				} else {
@@ -238,9 +249,9 @@
 	}
 
 	function updateSummary(data) {
-		$('#subtotal').text('$' + data.subtotal.toFixed(2));
-		$('#shipping').text('$' + data.shipping.toFixed(2));
-		$('#total').text('$' + data.total.toFixed(2));
+		$('#subtotal').text(formatCurrencyVN(data.subtotal));
+		$('#shipping').text(formatCurrencyVN(data.shipping));
+		$('#total').text(formatCurrencyVN(data.total));
 	}
 
 	function checkCheckoutButton(subtotal) {
