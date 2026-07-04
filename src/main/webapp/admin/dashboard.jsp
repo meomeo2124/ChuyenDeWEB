@@ -21,12 +21,12 @@
 
 <nav class="admin-nav">
     <ul>
-        <%-- ĐỒNG BỘ ĐƯỜNG DẪN ĐẾN CÁC CONTROLLER SPRING MVC NEW --%>
         <li><a href="${pageContext.request.contextPath}/admin/product/manage"><span class="icon">🛠️</span><span class="text">Quản lý sản phẩm</span></a></li>
         <li><a href="${pageContext.request.contextPath}/admin/user/manage"><span class="icon">👥</span><span class="text">Quản lý người dùng</span></a></li>
         <li><a href="${pageContext.request.contextPath}/admin/category/manage"><span class="icon">📋</span><span class="text">Quản lý danh mục</span></a></li>
         <li><a href="${pageContext.request.contextPath}/admin/statistics"><span class="icon">📈</span><span class="text">Thống kê</span></a></li>
-        <li><a href="${pageContext.request.contextPath}/logout"><span class="icon">🚪</span><span class="text">Đăng xuất</span></a></li>
+        <li><a href="${pageContext.request.contextPath}/admin/order/manage"><span class="icon">📦</span><span class="text">Quản lý Đơn hàng</span></a></li>
+        <li><a href="${pageContext.request.contextPath}/logout"><span class="icon">🚪</span><span class="text">Đăng xuất</span></a>
     </ul>
 </nav>
 

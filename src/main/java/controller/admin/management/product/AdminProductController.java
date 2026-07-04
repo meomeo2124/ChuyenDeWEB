@@ -143,7 +143,7 @@ public class AdminProductController {
                                 @RequestParam("name") String name,
                                 @RequestParam("description") String description,
                                 @RequestParam("price") double price,
-                                @RequestParam("stock") int stock, // 1. BỔ SUNG NHẬN STOCK
+                                @RequestParam("stock") int stock,
                                 @RequestParam("category_id") int categoryId,
                                 @RequestParam("photo") MultipartFile filePart) {
         try (Connection connection = DBConnectionPool.getDataSource().getConnection()) {

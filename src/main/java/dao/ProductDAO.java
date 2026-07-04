@@ -99,7 +99,7 @@ public class ProductDAO {
         return products;
     }
 
-    // 4. Cập nhật thông tin sản phẩm (ĐÃ ĐỒNG BỘ CỘT stock VÀ category_id)
+    // 4. Cập nhật thông tin sản phẩm
     public void updateProduct(Product product) {
         String sql = "UPDATE `dbo.product` SET product_name = ?, description = ?, images = ?, price = ?, stock = ?, category_id = ? WHERE id = ?";
         try (Connection connection = DBConnectionPool.getDataSource().getConnection();

@@ -13,12 +13,13 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
+import java.text.NumberFormat; // Thêm thư viện NumberFormat
 import java.util.List;
+import java.util.Locale;       // Thêm thư viện Locale
 
 @Controller
 public class ProductController {
 
-    // Hứng endpoint "/product" thay thế hoàn toàn cho ProductServlet cũ
     @GetMapping("/product")
     public String showProductDetail(
             @RequestParam(value = "id", required = false) String productIdStr,
@@ -27,7 +28,6 @@ public class ProductController {
 
         String errorMessage;
 
-        // 1. Kiểm tra ID sản phẩm có bị trống hay không
         if (productIdStr == null || productIdStr.trim().isEmpty()) {
             errorMessage = "Product ID is required";
             return redirectToHomepageWithError(errorMessage, redirectAttributes);
@@ -35,7 +35,6 @@ public class ProductController {
 
         int id;
         try {
-            // 2. Chuyển đổi ID sang số nguyên và kiểm tra số âm
             id = Integer.parseInt(productIdStr.trim());
             if (id <= 0) {
                 errorMessage = "Invalid product ID";
@@ -46,26 +45,21 @@ public class ProductController {
             return redirectToHomepageWithError(errorMessage, redirectAttributes);
         }
 
-        // 3. Kết nối Cơ sở dữ liệu và lấy thông tin
         try (Connection connection = DBConnectionPool.getDataSource().getConnection()) {
             ProductDAO productDAO = new ProductDAO(connection);
-
             Product product = productDAO.getProductById(id);
 
-            // 4. Kiểm tra nếu sản phẩm không tồn tại trong DB
             if (product == null) {
                 errorMessage = "Product not found";
                 return redirectToHomepageWithError(errorMessage, redirectAttributes);
             }
 
-            // 5. Nếu sản phẩm tồn tại, lấy danh sách sản phẩm liên quan đổ lên chân trang
             List<Product> productList = productDAO.getAllProducts();
 
-            // Thiết lập các thuộc tính gửi xuống hiển thị tại product-detail.jsp
             model.addAttribute("product", product);
             model.addAttribute("productList", productList);
 
-            return "product-detail"; // Trỏ đến WEB-INF/views/product-detail.jsp
+            return "product-detail";
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -74,11 +68,9 @@ public class ProductController {
         }
     }
 
-    // Hàm Helper xử lý chuyển hướng về trang chủ kèm theo thông báo lỗi chuẩn mã hóa URL giống Servlet cũ
     private String redirectToHomepageWithError(String message, RedirectAttributes redirectAttributes) {
         try {
             String encodedError = URLEncoder.encode(message, StandardCharsets.UTF_8.toString());
-            // Sử dụng cơ chế redirect của Spring MVC sang HomeController đón đường dẫn "/" (đã trỏ sang /home)
             return "redirect:/?error=" + encodedError;
         } catch (Exception e) {
             return "redirect:/?error=system_error";
@@ -86,7 +78,7 @@ public class ProductController {
     }
 
     // =========================================================================
-    // 3. TẢI THÊM SẢN PHẨM BẰNG AJAX (Thay thế hoàn toàn cho LoadMoreServlet cũ)
+    // 3. TẢI THÊM SẢN PHẨM BẰNG AJAX (Đã sửa định dạng VNĐ)
     // =========================================================================
     @GetMapping(value = "/load", produces = "text/html;charset=UTF-8")
     @ResponseBody
@@ -97,15 +89,20 @@ public class ProductController {
         StringBuilder htmlBuilder = new StringBuilder();
         String contextPath = request.getContextPath();
 
+        // 🌟 TẠO BỘ ĐỊNH DẠNG TIỀN TỆ CHUẨN VIỆT NAM (Dùng dấu chấm phân cách)
+        Locale localeVN = new Locale("vi", "VN");
+        NumberFormat vnFormat = NumberFormat.getInstance(localeVN);
+
         try (Connection connection = DBConnectionPool.getDataSource().getConnection()) {
             ProductDAO productDAO = new ProductDAO(connection);
-
-            // Gọi hàm getNext4(amount) nguyên bản của bạn từ ProductDAO
             List<Product> products = productDAO.getNext4(amount);
 
             for (Product o : products) {
                 String productUrl = contextPath + "/product?id=" + o.getId();
                 String photoName = (o.getPhoto() != null && !o.getPhoto().trim().isEmpty()) ? o.getPhoto() : "no-sample.png";
+
+                // Ép giá sản phẩm qua bộ định dạng
+                String formattedPrice = vnFormat.format(o.getPrice());
 
                 htmlBuilder.append("<div class=\"product-count col mb-5\">\r\n")
                         .append("    <div class=\"card h-100\">\r\n")
@@ -132,7 +129,10 @@ public class ProductController {
                         .append("                    <div class=\"bi-star-fill\">*</div>\r\n")
                         .append("                </div>\r\n")
                         .append("                \r\n")
-                        .append("                $ ").append(o.getPrice()).append("\r\n")
+                        // 🌟 THAY THẾ DÒNG CŨ ($) BẰNG GIAO DIỆN VNĐ
+                        .append("                <span class=\"text-primary fw-bold border-top pt-2 d-inline-block w-100\">\r\n")
+                        .append("                    ").append(formattedPrice).append(" VNĐ\r\n")
+                        .append("                </span>\r\n")
                         .append("            </div>\r\n")
                         .append("        </div>\r\n")
                         .append("        \r\n")
@@ -152,7 +152,6 @@ public class ProductController {
         return htmlBuilder.toString();
     }
 
-    // Hàm tiện ích hỗ trợ lọc các ký tự HTML đặc biệt để tránh lỗi hiển thị dữ liệu
     private String escapeHtml(String input) {
         if (input == null) return null;
         return input.replace("&", "&amp;")
@@ -161,5 +160,4 @@ public class ProductController {
                 .replace("\"", "&quot;")
                 .replace("'", "&#39;");
     }
-
 }
