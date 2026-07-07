@@ -63,10 +63,10 @@ public class OrderDAO {
             entityManager.merge(order);
         }
 
-
-        entityManager.createNativeQuery("UPDATE payment SET status = :status WHERE order_id = :orderId")
-                .setParameter("status", status)
-                .setParameter("orderId", orderId)
+        // Sửa lại thành ?1 và ?2
+        entityManager.createNativeQuery("UPDATE payment SET status = ?1 WHERE order_id = ?2")
+                .setParameter(1, status)
+                .setParameter(2, orderId)
                 .executeUpdate();
     }
 
