@@ -1,109 +1,72 @@
 package dao;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import javax.sql.DataSource;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Repository;
-
 import models.Cart;
 import models.CartItem;
-import models.Product;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
+
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.NoResultException;
+import java.util.List;
 
 @Repository
-public class CartItemDAO {
+@Transactional
+public class CartDAO {
 
-    private final DataSource dataSource;
-    private final ProductDAO productDAO;
+    @PersistenceContext
+    private EntityManager entityManager;
 
-    @Autowired
-    public CartItemDAO(DataSource dataSource, ProductDAO productDAO) {
-        this.dataSource = dataSource;
-        this.productDAO = productDAO;
-    }
+    public Cart getCartByUserId(int userId) {
+        try {
+            Cart cart = entityManager.createQuery("SELECT c FROM Cart c WHERE c.userId = :userId", Cart.class)
+                    .setParameter("userId", userId)
+                    .getSingleResult();
 
-    public boolean addCartItem(int cartId, int productId, int quantity) throws SQLException {
-        if (cartId <= 0) {
-            throw new SQLException("Invalid CartId: " + cartId);
-        }
-        String sql = "INSERT INTO `dbo.cartitem` (CartId, ProductId, Quantity) VALUES (?, ?, ?)";
-        try (Connection connection = dataSource.getConnection();
-             PreparedStatement stmt = connection.prepareStatement(sql)) {
-            if (quantity <= 0) throw new IllegalArgumentException("Quantity must be greater than 0");
-            Product product = productDAO.getProductById(productId);
-            if (product == null || quantity > product.getStock()) throw new IllegalArgumentException("Not enough stock");
-
-            stmt.setInt(1, cartId);
-            stmt.setInt(2, productId);
-            stmt.setInt(3, quantity);
-            return stmt.executeUpdate() > 0;
+            List<CartItem> items = getCartItems(cart.getCartId());
+            for (CartItem item : items) {
+                cart.getItems().put(item.getProductId(), item);
+            }
+            return cart;
+        } catch (NoResultException e) {
+            return null;
         }
     }
 
-    public boolean addCartItem(Cart cart, Product product, int quantity) throws SQLException {
-        if (cart.getCartId() <= 0) {
-            throw new SQLException("Invalid CartId: " + cart.getCartId());
-        }
-        String sql = "INSERT INTO `dbo.cartitem` (CartId, ProductId, Quantity) VALUES (?, ?, ?)";
-        try (Connection connection = dataSource.getConnection();
-             PreparedStatement stmt = connection.prepareStatement(sql)) {
-            if (quantity <= 0 || quantity > product.getStock()) {
-                throw new IllegalArgumentException("Invalid quantity or not enough stock");
-            }
-            stmt.setInt(1, cart.getCartId());
-            stmt.setInt(2, product.getId());
-            stmt.setInt(3, quantity);
-            int rowsAffected = stmt.executeUpdate();
-            if (rowsAffected > 0) {
-                cart.getItems().put(product.getId(), new CartItem(product, quantity));
-                return true;
-            }
-            return false;
+    public void createCart(Cart cart) {
+        entityManager.persist(cart);
+    }
+
+    public void updateCart(Cart cart) {
+        // Xóa sạch CartItem cũ của Cart này
+        entityManager.createQuery("DELETE FROM CartItem ci WHERE ci.cartId = :cartId")
+                .setParameter("cartId", cart.getCartId())
+                .executeUpdate();
+
+        // Thêm loạt CartItem mới vào database
+        for (CartItem item : cart.getItems().values()) {
+            item.setCartId(cart.getCartId());
+            entityManager.persist(item);
         }
     }
 
-    public void setQuantity(Cart cart, Product product, int quantity) throws SQLException {
-        if (cart.getCartId() <= 0) {
-            throw new SQLException("Invalid CartId: " + cart.getCartId());
-        }
-        String sqlSelect = "SELECT Quantity FROM `dbo.cartitem` WHERE CartId = ? AND ProductId = ?";
-        String sqlUpdate = "UPDATE `dbo.cartitem` SET Quantity = ? WHERE CartId = ? AND ProductId = ?";
-        try (Connection connection = dataSource.getConnection();
-             PreparedStatement stmtSelect = connection.prepareStatement(sqlSelect);
-             PreparedStatement stmtUpdate = connection.prepareStatement(sqlUpdate)) {
-            if (quantity < 0) throw new IllegalArgumentException("Quantity cannot be negative");
-            stmtSelect.setInt(1, cart.getCartId());
-            stmtSelect.setInt(2, product.getId());
-            int currentQuantity = 0;
-            try (ResultSet rs = stmtSelect.executeQuery()) {
-                if (rs.next()) currentQuantity = rs.getInt("Quantity");
-            }
-            if (quantity > product.getStock()) throw new IllegalArgumentException("Not enough stock");
-            stmtUpdate.setInt(1, quantity);
-            stmtUpdate.setInt(2, cart.getCartId());
-            stmtUpdate.setInt(3, product.getId());
-            int rowsAffected = stmtUpdate.executeUpdate();
-            if (rowsAffected > 0 && cart.getItems().containsKey(product.getId())) {
-                cart.getItems().get(product.getId()).setQuantity(quantity);
-            }
-        }
+    public List<CartItem> getCartItems(int cartId) {
+        return entityManager.createQuery("SELECT ci FROM CartItem ci WHERE ci.cartId = :cartId", CartItem.class)
+                .setParameter("cartId", cartId)
+                .getResultList();
     }
 
-    public int getQuantity(Cart cart, Product product) throws SQLException {
-        if (cart.getCartId() <= 0) {
-            throw new SQLException("Invalid CartId: " + cart.getCartId());
-        }
-        String sql = "SELECT Quantity FROM `dbo.cartitem` WHERE CartId = ? AND ProductId = ?";
-        try (Connection connection = dataSource.getConnection();
-             PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setInt(1, cart.getCartId());
-            stmt.setInt(2, product.getId());
-            try (ResultSet rs = stmt.executeQuery()) {
-                return rs.next() ? rs.getInt("Quantity") : 0;
-            }
-        }
+    public void clearCart(int cartId) {
+        entityManager.createQuery("DELETE FROM CartItem ci WHERE ci.cartId = :cartId")
+                .setParameter("cartId", cartId)
+                .executeUpdate();
+    }
+
+    public boolean removeCartItem(int cartId, int productId) {
+        int rowsDeleted = entityManager.createQuery("DELETE FROM CartItem ci WHERE ci.cartId = :cartId AND ci.productId = :productId")
+                .setParameter("cartId", cartId)
+                .setParameter("productId", productId)
+                .executeUpdate();
+        return rowsDeleted > 0;
     }
 }
