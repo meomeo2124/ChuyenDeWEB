@@ -3,7 +3,7 @@ package models;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "`dbo.product`") // Thêm cặp dấu nháy ngược và chữ dbo.
+@Table(name = "`product`") // Đổi từ 'products' thành 'product' để sửa lỗi Table doesn't exist
 public class Product {
 
     @Id
@@ -25,8 +25,8 @@ public class Product {
     @Column(name = "stock")
     private int stock;
 
-    @ManyToOne
-    @JoinColumn(name = "category_id") // Khóa ngoại liên kết tới Category
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
     private Category category;
 
     public Product() {}

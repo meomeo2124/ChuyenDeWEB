@@ -17,17 +17,13 @@ public class CartDAO {
     @PersistenceContext
     private EntityManager entityManager;
 
+    // Trong CartDAO.java
     public Cart getCartByUserId(int userId) {
         try {
-            Cart cart = entityManager.createQuery("SELECT c FROM Cart c WHERE c.userId = :userId", Cart.class)
+            // Thêm alias 'c' và đảm bảo 'Cart' là tên Class Entity
+            return entityManager.createQuery("SELECT c FROM Cart c WHERE c.userId = :userId", Cart.class)
                     .setParameter("userId", userId)
                     .getSingleResult();
-
-            List<CartItem> items = getCartItems(cart.getCartId());
-            for (CartItem item : items) {
-                cart.getItems().put(item.getProductId(), item);
-            }
-            return cart;
         } catch (NoResultException e) {
             return null;
         }

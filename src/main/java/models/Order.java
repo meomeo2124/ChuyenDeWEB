@@ -6,7 +6,7 @@ import java.util.Date;
 import java.util.List;
 
 @Entity
-@Table(name = "`dbo.orders`")
+@Table(name = "`orders`")
 public class Order {
 
     @Id
@@ -15,6 +15,10 @@ public class Order {
 
     @Column(name = "user_id")
     private int userId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", insertable = false, updatable = false)
+    private User user;
 
     @Column(name = "total")
     private double totalPrice;
@@ -26,17 +30,16 @@ public class Order {
     @Temporal(TemporalType.TIMESTAMP)
     private Date orderDate;
 
-    @Transient // Dùng cho UI, không có sẵn trong bảng orders
+    @Transient
     private String shippingAddress;
 
     @Transient
     private String paymentMethod;
 
-    @Transient // Bỏ qua quan hệ phức tạp, tự load danh sách thông qua OrderDAO
-    private List<OrderItem> items;
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<OrderItem> items = new ArrayList<>();
 
     public Order() {
-        this.items = new ArrayList<>();
     }
 
     public int getId() { return id; }
@@ -55,6 +58,15 @@ public class Order {
     public void setPaymentMethod(String paymentMethod) { this.paymentMethod = paymentMethod; }
     public List<OrderItem> getItems() { return items; }
     public void setItems(List<OrderItem> items) { this.items = items; }
-    public void addItem(OrderItem oi) { items.add(oi); }
-    public void removeItem(OrderItem oi) { items.remove(oi); }
+    public void addItem(OrderItem oi) {
+        items.add(oi);
+        oi.setOrder(this);
+    }
+    public void removeItem(OrderItem oi) {
+        items.remove(oi);
+        oi.setOrder(null);
+    }
+
+    public User getUser() { return user; }
+    public void setUser(User user) { this.user = user; }
 }

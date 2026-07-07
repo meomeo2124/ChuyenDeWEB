@@ -3,24 +3,30 @@ package models;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "`dbo.cartitem`")
+@Table(name = "`cartitem`")
 public class CartItem {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int id; // Lưu ý quan trọng bên dưới
+    @Column(name = "CartItemId")
+    private int id;
 
     @Column(name = "CartId")
     private int cartId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "CartId", insertable = false, updatable = false)
+    private Cart cart;
+
     @Column(name = "ProductId")
     private int productId;
 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "ProductId", insertable = false, updatable = false)
+    private Product product;
+
     @Column(name = "Quantity")
     private int quantity;
-
-    @Transient // Không map vào DB
-    private Product product;
 
     public CartItem() {}
 
@@ -37,6 +43,9 @@ public class CartItem {
 
     public int getCartId() { return cartId; }
     public void setCartId(int cartId) { this.cartId = cartId; }
+
+    public Cart getCart() { return cart; }
+    public void setCart(Cart cart) { this.cart = cart; }
 
     public Product getProduct() { return product; }
     public void setProduct(Product product) {

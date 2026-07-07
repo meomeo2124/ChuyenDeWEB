@@ -2,9 +2,10 @@ package models;
 
 import jakarta.persistence.*;
 import java.util.ArrayList;
+import java.util.List;
 
 @Entity
-@Table(name = "`dbo.users`")
+@Table(name = "`users`")
 public class User {
 
 	@Id
@@ -35,7 +36,13 @@ public class User {
 	@Column(name = "google_id")
 	private String googleId;
 
-	@Transient // JPA sẽ bỏ qua cột này, không cố map vào DB
+	@OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+	private Cart cart;
+
+	@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+	private List<Order> orders = new ArrayList<>();
+
+	@Transient
 	private ArrayList<Product> FavoriteProducts;
 
 	public User() {}
@@ -62,6 +69,11 @@ public class User {
 	public String getPhone() { return phone; }
 	public void setPhone(String phone) { this.phone = phone; }
 	public void setFavoriteProducts(ArrayList<Product> arrayList) { this.FavoriteProducts = arrayList; }
+
+	public Cart getCart() { return cart; }
+	public void setCart(Cart cart) { this.cart = cart; }
+	public List<Order> getOrders() { return orders; }
+	public void setOrders(List<Order> orders) { this.orders = orders; }
 
 	@Override
 	public String toString() {
