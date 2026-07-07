@@ -96,7 +96,7 @@ public class PaymentController {
                     return "redirect:/secure/payment?error=" + error;
                 }
 
-                // Đồng bộ phí ship tiền Việt (15000 VNĐ thay vì 10.00) cho khớp với CartController
+                // Cộng thêm 15,000đ phí ship chuẩn vào tổng hóa đơn
                 double totalPrice = cart.getTotalPrice() + (cart.getTotalPrice() > 0 ? 15000.00 : 0.00);
 
                 if ("vietqr".equalsIgnoreCase(paymentMethod)) {
@@ -108,7 +108,6 @@ public class PaymentController {
                         session.setAttribute("cart", cart);
 
                         long amountVnd = (long) totalPrice;
-
                         String bankId = "MB";
                         String accountNo = "0941660744";
                         String accountName = URLEncoder.encode("NGUYEN HUYNH GIAO", StandardCharsets.UTF_8.toString());
@@ -129,8 +128,7 @@ public class PaymentController {
                     int orderId = orderDAO.createOrder(user.getId(), totalPrice, "VNPAY");
                     if (orderId > 0) {
                         orderDAO.saveOrderDetails(orderId, cart.getItems());
-
-                        long amount = (long) (totalPrice * 100);
+                        long amount = Math.round(totalPrice * 100);
 
                         Map<String, String> vnp_Params = new HashMap<>();
                         vnp_Params.put("vnp_Version", VnPayConfig.vnp_Version);
@@ -170,17 +168,11 @@ public class PaymentController {
                             String fieldName = itr.next();
                             String fieldValue = vnp_Params.get(fieldName);
                             if ((fieldValue != null) && (fieldValue.length() > 0)) {
-
                                 String encodedValue = URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII.toString());
                                 String encodedName = URLEncoder.encode(fieldName, StandardCharsets.US_ASCII.toString());
 
-                                hashData.append(fieldName);
-                                hashData.append('=');
-                                hashData.append(encodedValue);
-
-                                query.append(encodedName);
-                                query.append('=');
-                                query.append(encodedValue);
+                                hashData.append(fieldName).append('=').append(encodedValue);
+                                query.append(encodedName).append('=').append(encodedValue);
 
                                 if (itr.hasNext()) {
                                     query.append('&');
@@ -197,17 +189,14 @@ public class PaymentController {
                     }
                 }
 
+                // Luồng xử lý cho TIỀN MẶT / Các phương thức offline
                 int orderId = orderDAO.createOrder(user.getId(), totalPrice, paymentMethod);
                 if (orderId > 0) {
                     orderDAO.saveOrderDetails(orderId, cart.getItems());
 
                     cart.clearCart();
                     session.setAttribute("cart", cart);
-
-                    Order order = orderDAO.getOrderById(orderId);
-                    model.addAttribute("order", order);
-
-                    return "secure/invoice";
+                    return "redirect:/secure/order-success?orderId=" + orderId;
                 } else {
                     String error = URLEncoder.encode("Thanh toán thất bại", StandardCharsets.UTF_8);
                     return "redirect:/secure/payment?error=" + error;
@@ -221,6 +210,17 @@ public class PaymentController {
 
         String error = URLEncoder.encode("Yêu cầu không hợp lệ", StandardCharsets.UTF_8);
         return "redirect:/secure/cart?error=" + error;
+    }
+
+    @GetMapping("/order-success")
+    public String showOrderSuccess(@RequestParam("orderId") int orderId, Model model) {
+        try {
+            Order order = orderDAO.getOrderById(orderId);
+            model.addAttribute("order", order);
+            return "secure/invoice";
+        } catch (Exception e) {
+            return "redirect:/secure/cart?error=" + URLEncoder.encode("Lỗi hiển thị hóa đơn.", StandardCharsets.UTF_8);
+        }
     }
 
     @PostMapping("/vietqr-confirm")
@@ -237,7 +237,6 @@ public class PaymentController {
         } catch (Exception e) {
             LOGGER.severe("VietQR confirm error: " + e.getMessage());
         }
-
         return "redirect:/secure/cart?error=" + URLEncoder.encode("Khong tim thay don hang de xac nhan.", StandardCharsets.UTF_8);
     }
 
@@ -252,7 +251,7 @@ public class PaymentController {
         }
 
         Map<String, String> fields = new HashMap<>();
-        for (Enumeration<String> params = request.getParameterNames(); params.hasMoreElements();) {
+        for (Enumeration<String> params = request.getParameterNames(); params.hasMoreElements(); ) {
             String fieldName = params.nextElement();
             String fieldValue = request.getParameter(fieldName);
             if ((fieldValue != null) && (fieldValue.length() > 0) && fieldName.startsWith("vnp_")) {
@@ -269,9 +268,7 @@ public class PaymentController {
         while (iterator.hasNext()) {
             String fieldName = iterator.next();
             String fieldValue = fields.get(fieldName);
-            sb.append(fieldName);
-            sb.append("=");
-            sb.append(fieldValue);
+            sb.append(fieldName).append("=").append(fieldValue);
             if (iterator.hasNext()) {
                 sb.append("&");
             }
@@ -329,7 +326,7 @@ public class PaymentController {
             }
 
             response.setContentType("application/pdf");
-            response.setHeader("Content-Disposition", "attachment; filename=hoa_don_" + orderId + ".pdf");
+            response.setHeader("Content-Disposition", "attachment; filename=BobaStation_HoaDon_" + orderId + ".pdf");
 
             PdfWriter writer = new PdfWriter(response.getOutputStream());
             PdfDocument pdf = new PdfDocument(writer);
@@ -338,32 +335,52 @@ public class PaymentController {
             PdfFont font = PdfFontFactory.createFont("C:/Windows/Fonts/times.ttf", "Identity-H", PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
             document.setFont(font);
 
-            document.add(new Paragraph("Hóa Đơn").setFontSize(20));
-            document.add(new Paragraph("Mã Hóa Đơn: " + order.getId()));
+            document.add(new Paragraph("BOBA STATION").setFontSize(16).setBold().setTextAlignment(com.itextpdf.layout.properties.TextAlignment.CENTER));
+            document.add(new Paragraph("Địa chỉ: Khu Phố 33, Phường Linh Xuân, Thành Phố Hồ Chí Minh").setFontSize(10).setTextAlignment(com.itextpdf.layout.properties.TextAlignment.CENTER).setItalic());
+            document.add(new Paragraph("------------------------------------------------------------------------------------------------------------------------").setTextAlignment(com.itextpdf.layout.properties.TextAlignment.CENTER));
 
-            String paymentMethodDisplay = switch (order.getPaymentMethod() != null ? order.getPaymentMethod() : "UNKNOWN") {
-                case "cash_on_delivery" -> "Tiền mặt (Thanh toán khi nhận hàng)";
+            document.add(new Paragraph("MÃ HÓA ĐƠN: #" + order.getId()).setBold());
+            document.add(new Paragraph("Khách hàng đặt mua: " + user.getUsername()));
+            document.add(new Paragraph("Số điện thoại liên hệ: " + (user.getPhone() != null ? user.getPhone() : "Chưa cập nhật")));
+
+            String pMethod = switch (order.getPaymentMethod() != null ? order.getPaymentMethod() : "UNKNOWN") {
+                case "cash_on_delivery", "CASH" -> "Tiền mặt (Thanh toán khi nhận hàng)";
                 case "VNPAY" -> "Cổng thanh toán điện tử VNPay";
-                case "credit_card" -> "Thẻ tín dụng";
-                case "paypal" -> "PayPal";
-                case "momo" -> "MoMo";
-                default -> "Không xác định";
+                case "VIETQR" -> "Chuyển khoản nhanh mã VietQR";
+                default -> "Thanh toán bằng thẻ";
             };
-            document.add(new Paragraph("Phương Thức Thanh Toán: " + paymentMethodDisplay));
-            document.add(new Paragraph("Tổng Tiền: " + String.format("%,.0f VNĐ", order.getTotalPrice())));
+            document.add(new Paragraph("Phương thức thanh toán: " + pMethod));
+            document.add(new Paragraph("Thời gian khởi tạo hệ thống: " + new SimpleDateFormat("dd/MM/yyyy HH:mm:ss").format(order.getOrderDate() != null ? order.getOrderDate() : new Date())));
+            document.add(new Paragraph(" "));
+            Table table = new Table(new float[]{4, 1, 2});
+            table.setWidth(com.itextpdf.layout.properties.UnitValue.createPercentValue(100));
 
-            Table table = new Table(new float[]{3, 1, 2});
-            table.addHeaderCell(new Cell().add(new Paragraph("Sản Phẩm").setFont(font)));
-            table.addHeaderCell(new Cell().add(new Paragraph("Số Lượng").setFont(font)));
-            table.addHeaderCell(new Cell().add(new Paragraph("Giá").setFont(font)));
+            // Định dạng tiêu đề bảng (Header)
+            table.addHeaderCell(new Cell().add(new Paragraph("Tên đồ uống / Topping").setBold().setFont(font)).setBackgroundColor(com.itextpdf.kernel.colors.ColorConstants.LIGHT_GRAY));
+            table.addHeaderCell(new Cell().add(new Paragraph("SL").setBold().setFont(font).setTextAlignment(com.itextpdf.layout.properties.TextAlignment.CENTER)).setBackgroundColor(com.itextpdf.kernel.colors.ColorConstants.LIGHT_GRAY));
+            table.addHeaderCell(new Cell().add(new Paragraph("Thành tiền").setBold().setFont(font).setTextAlignment(com.itextpdf.layout.properties.TextAlignment.RIGHT)).setBackgroundColor(com.itextpdf.kernel.colors.ColorConstants.LIGHT_GRAY));
 
+            double subTotal = 0.0;
             for (OrderItem item : order.getItems()) {
-                table.addCell(new Cell().add(new Paragraph(item.getProductName()).setFont(font)));
-                table.addCell(new Cell().add(new Paragraph(String.valueOf(item.getQuantity())).setFont(font)));
-                table.addCell(new Cell().add(new Paragraph(String.format("%,.0f VNĐ", item.getPrice())).setFont(font)));
-            }
+                double itemExtPrice = item.getPrice() * item.getQuantity();
+                subTotal += itemExtPrice;
 
+                table.addCell(new Cell().add(new Paragraph(item.getProductName()).setFont(font)));
+                table.addCell(new Cell().add(new Paragraph(String.valueOf(item.getQuantity())).setFont(font).setTextAlignment(com.itextpdf.layout.properties.TextAlignment.CENTER)));
+                table.addCell(new Cell().add(new Paragraph(String.format("%,.0f đ", itemExtPrice)).setFont(font).setTextAlignment(com.itextpdf.layout.properties.TextAlignment.RIGHT)));
+            }
             document.add(table);
+            document.add(new Paragraph(" "));
+
+            double shipFee = (subTotal > 0) ? 15000.00 : 0.00;
+            document.add(new Paragraph("Tạm tính tiền hàng: " + String.format("%,.0f VNĐ", subTotal)).setTextAlignment(com.itextpdf.layout.properties.TextAlignment.RIGHT));
+            document.add(new Paragraph("Phí vận chuyển (Giao hàng tận nơi): " + String.format("%,.0f VNĐ", shipFee)).setTextAlignment(com.itextpdf.layout.properties.TextAlignment.RIGHT));
+            document.add(new Paragraph("TỔNG CỘNG THANH TOÁN: " + String.format("%,.0f VNĐ", order.getTotalPrice())).setFontSize(13).setBold().setFontColor(com.itextpdf.kernel.colors.ColorConstants.RED).setTextAlignment(com.itextpdf.layout.properties.TextAlignment.RIGHT));
+
+            document.add(new Paragraph(" "));
+            document.add(new Paragraph("Cảm ơn quý khách đã tin tưởng lựa chọn Boba Station!").setItalic().setTextAlignment(com.itextpdf.layout.properties.TextAlignment.CENTER));
+            document.add(new Paragraph("Chúc quý khách ngon miệng!").setItalic().setTextAlignment(com.itextpdf.layout.properties.TextAlignment.CENTER));
+
             document.close();
 
             // Đã sửa lại thành catch (Exception e) để bắt mọi lỗi phát sinh thay vì SQLException
