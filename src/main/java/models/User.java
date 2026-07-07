@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import java.util.ArrayList;
 
 @Entity
-@Table(name = "`dbo.users`")
+@Table(name = "`users`")
 public class User {
 
 	@Id

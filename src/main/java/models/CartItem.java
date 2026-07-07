@@ -8,7 +8,8 @@ public class CartItem {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int id; // Lưu ý quan trọng bên dưới
+    @Column(name = "CartItemId")
+    private int id;
 
     @Column(name = "CartId")
     private int cartId;

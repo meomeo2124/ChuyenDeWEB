@@ -8,7 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "`dbo.product_categories`")
+@Table(name = "` coproduct_categories`")
 public class Category {
 
     @Id
