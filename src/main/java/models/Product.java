@@ -29,14 +29,19 @@ public class Product {
     @JoinColumn(name = "category_id")
     private Category category;
 
+    @Column(name = "discount")
+    private double discount;
+
     public Product() {}
 
-    public Product(int id, String name, String description, String photo, double price, double discount, int stock, Category category) {
+    public Product(int id, String name, String description, String photo,
+                   double price, double discount, int stock, Category category) {
         this.id = id;
         this.name = name;
         this.description = description;
         this.photo = photo;
         this.price = price;
+        this.discount = discount;  // ← Thêm dòng này
         this.stock = stock;
         this.category = category;
     }
@@ -55,4 +60,7 @@ public class Product {
     public void setPrice(double price) { this.price = price; }
     public Category getCategory() { return category; }
     public void setCategory(Category category) { this.category = category; }
+    public double getDiscount() { return discount; }
+    public void setDiscount(double discount) { this.discount = discount; }
+
 }

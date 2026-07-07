@@ -24,7 +24,7 @@ public class OrderDAO {
         order.setUserId(userId);
         order.setTotalPrice(totalPrice);
         order.setStatus("PENDING");
-        order.setOrderDate(new Timestamp(System.currentTimeMillis()));
+        order.setOrderDate(new java.util.Date());  // Hoặc new Date(System.currentTimeMillis())
         order.setPaymentMethod(paymentMethod != null ? paymentMethod : "CASH");
 
         entityManager.persist(order);
