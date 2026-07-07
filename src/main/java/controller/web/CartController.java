@@ -47,7 +47,6 @@ public class CartController {
 
         try {
             System.out.println("Fetching the cart for userId: " + user.getId());
-            // 🌟 3. Gọi trực tiếp từ Spring Bean thay vì mở Connection thủ công
             Cart cart = getOrCreateCart(user.getId());
 
             if (cart != null) {
@@ -86,7 +85,6 @@ public class CartController {
                 throw new IllegalArgumentException("Số lượng phải lớn hơn 0");
             }
 
-            // 🌟 4. Loại bỏ hoàn toàn khối mở Connection và các từ khóa new DAO() rác
             Product product = productDAO.getProductById(productId);
             if (product == null) throw new IllegalArgumentException("Sản phẩm không tồn tại");
             if (quantity > product.getStock()) throw new IllegalArgumentException("Không đủ hàng trong kho.");

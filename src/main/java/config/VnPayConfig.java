@@ -22,7 +22,6 @@ public class VnPayConfig {
     public static final String vnp_Version = "2.1.0";
     public static final String vnp_Command = "pay";
 
-    // Hàm băm thuật toán mật mã SHA-512 bảo mật để đối soát dữ liệu đầu cuối với ngân hàng
     public static String hmacSHA512(final String key, final String data) {
         try {
             if (key == null || data == null) {
