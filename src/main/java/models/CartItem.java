@@ -3,7 +3,7 @@ package models;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "cartitem")
+@Table(name = "`dbo.cartitem`")
 public class CartItem {
 
     @Id

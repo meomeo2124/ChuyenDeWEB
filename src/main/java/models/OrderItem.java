@@ -3,7 +3,7 @@ package models;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "order_details")
+@Table(name = "`dbo.order_details`")
 public class OrderItem {
 
     @Id

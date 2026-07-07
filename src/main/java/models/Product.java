@@ -3,7 +3,7 @@ package models;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "product") // Đổi thành "dbo.product" nếu DB của bạn thực sự có chữ dbo.
+@Table(name = "`dbo.product`") // Thêm cặp dấu nháy ngược và chữ dbo.
 public class Product {
 
     @Id

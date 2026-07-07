@@ -5,7 +5,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Entity
-@Table(name = "cart")
+@Table(name = "`dbo.cart`")
 public class Cart {
 
     @Id
