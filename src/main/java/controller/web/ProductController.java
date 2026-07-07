@@ -1,8 +1,8 @@
 package controller.web;
 
-import dao.DBConnectionPool;
 import dao.ProductDAO;
 import models.Product;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,13 +12,17 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.sql.Connection;
-import java.text.NumberFormat; // Thêm thư viện NumberFormat
+import java.text.NumberFormat;
 import java.util.List;
-import java.util.Locale;       // Thêm thư viện Locale
+import java.util.Locale;
 
 @Controller
 public class ProductController {
+    private final ProductDAO productDAO;
+    @Autowired
+    public ProductController(ProductDAO productDAO) {
+        this.productDAO = productDAO;
+    }
 
     @GetMapping("/product")
     public String showProductDetail(
@@ -45,8 +49,7 @@ public class ProductController {
             return redirectToHomepageWithError(errorMessage, redirectAttributes);
         }
 
-        try (Connection connection = DBConnectionPool.getDataSource().getConnection()) {
-            ProductDAO productDAO = new ProductDAO(connection);
+        try {
             Product product = productDAO.getProductById(id);
 
             if (product == null) {
@@ -77,9 +80,6 @@ public class ProductController {
         }
     }
 
-    // =========================================================================
-    // 3. TẢI THÊM SẢN PHẨM BẰNG AJAX (Đã sửa định dạng VNĐ)
-    // =========================================================================
     @GetMapping(value = "/load", produces = "text/html;charset=UTF-8")
     @ResponseBody
     public String ajaxLoadMoreProducts(
@@ -89,19 +89,16 @@ public class ProductController {
         StringBuilder htmlBuilder = new StringBuilder();
         String contextPath = request.getContextPath();
 
-        // 🌟 TẠO BỘ ĐỊNH DẠNG TIỀN TỆ CHUẨN VIỆT NAM (Dùng dấu chấm phân cách)
         Locale localeVN = new Locale("vi", "VN");
         NumberFormat vnFormat = NumberFormat.getInstance(localeVN);
 
-        try (Connection connection = DBConnectionPool.getDataSource().getConnection()) {
-            ProductDAO productDAO = new ProductDAO(connection);
+        try {
             List<Product> products = productDAO.getNext4(amount);
 
             for (Product o : products) {
                 String productUrl = contextPath + "/product?id=" + o.getId();
                 String photoName = (o.getPhoto() != null && !o.getPhoto().trim().isEmpty()) ? o.getPhoto() : "no-sample.png";
 
-                // Ép giá sản phẩm qua bộ định dạng
                 String formattedPrice = vnFormat.format(o.getPrice());
 
                 htmlBuilder.append("<div class=\"product-count col mb-5\">\r\n")
@@ -129,7 +126,6 @@ public class ProductController {
                         .append("                    <div class=\"bi-star-fill\">*</div>\r\n")
                         .append("                </div>\r\n")
                         .append("                \r\n")
-                        // 🌟 THAY THẾ DÒNG CŨ ($) BẰNG GIAO DIỆN VNĐ
                         .append("                <span class=\"text-primary fw-bold border-top pt-2 d-inline-block w-100\">\r\n")
                         .append("                    ").append(formattedPrice).append(" VNĐ\r\n")
                         .append("                </span>\r\n")

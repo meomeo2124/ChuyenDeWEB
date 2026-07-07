@@ -11,7 +11,6 @@ import com.itextpdf.layout.element.Table;
 
 import config.VnPayConfig;
 import dao.OrderDAO;
-import dao.DBConnectionPool;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -20,6 +19,7 @@ import models.Order;
 import models.OrderItem;
 import models.User;
 
+import org.springframework.beans.factory.annotation.Autowired; // BỔ SUNG IMPORT
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,6 +27,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import javax.sql.DataSource; // BỔ SUNG IMPORT
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -42,7 +43,14 @@ import java.util.logging.Logger;
 public class PaymentController {
 
     private static final Logger LOGGER = Logger.getLogger(PaymentController.class.getName());
-    private final OrderDAO orderDAO = new OrderDAO();
+    private final OrderDAO orderDAO;
+    private final DataSource dataSource;
+
+    @Autowired
+    public PaymentController(OrderDAO orderDAO, DataSource dataSource) {
+        this.orderDAO = orderDAO;
+        this.dataSource = dataSource;
+    }
 
     @GetMapping("/payment")
     public String showPaymentPage(HttpSession session) {
@@ -92,11 +100,9 @@ public class PaymentController {
                     return "redirect:/secure/payment?error=" + error;
                 }
 
-                double totalPrice = cart.getTotalPrice() + (cart.getTotalPrice() > 0 ? 10.00 : 0.00);
+                // Đồng bộ phí ship tiền Việt (15000 VNĐ thay vì 10.00) cho khớp với CartController
+                double totalPrice = cart.getTotalPrice() + (cart.getTotalPrice() > 0 ? 15000.00 : 0.00);
 
-                // =============================================================
-                // ROUTER 1: XỬ LÝ VIETQR
-                // =============================================================
                 if ("vietqr".equalsIgnoreCase(paymentMethod)) {
                     int orderId = orderDAO.createOrder(user.getId(), totalPrice, "VIETQR");
                     if (orderId > 0) {
@@ -122,15 +128,12 @@ public class PaymentController {
                         return "secure/vietqr_pay";
                     }
                 }
-                // =============================================================
-                // ROUTER 2: XỬ LÝ VNPAY (ĐÃ ĐỒNG BỘ CHUẨN MẪU AJAXSERVLET)
-                // =============================================================
+
                 if ("vnpay".equalsIgnoreCase(paymentMethod)) {
                     int orderId = orderDAO.createOrder(user.getId(), totalPrice, "VNPAY");
                     if (orderId > 0) {
                         orderDAO.saveOrderDetails(orderId, cart.getItems());
 
-                        // Tính số tiền theo đơn vị đồng cấu trúc VNPay (Nhân 100)
                         long amount = (long) (totalPrice * 100);
 
                         Map<String, String> vnp_Params = new HashMap<>();
@@ -151,7 +154,7 @@ public class PaymentController {
                         }
                         vnp_Params.put("vnp_IpAddr", ipAddr);
 
-                        TimeZone tz = TimeZone.getTimeZone("Asia/Ho_Chi_Minh"); // Chuẩn múi giờ Việt Nam (GMT+7)
+                        TimeZone tz = TimeZone.getTimeZone("Asia/Ho_Chi_Minh");
                         Calendar cld = Calendar.getInstance(tz);
                         SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss");
                         formatter.setTimeZone(tz);
@@ -160,11 +163,6 @@ public class PaymentController {
                         cld.add(Calendar.MINUTE, 15);
                         vnp_Params.put("vnp_ExpireDate", formatter.format(cld.getTime()));
 
-                        vnp_Params.put("vnp_CreateDate", formatter.format(cld.getTime()));
-                        cld.add(Calendar.MINUTE, 15);
-                        vnp_Params.put("vnp_ExpireDate", formatter.format(cld.getTime()));
-
-                        // Sắp xếp các tham số alphabet
                         List<String> fieldNames = new ArrayList<>(vnp_Params.keySet());
                         Collections.sort(fieldNames);
 
@@ -172,22 +170,18 @@ public class PaymentController {
                         StringBuilder query = new StringBuilder();
                         Iterator<String> itr = fieldNames.iterator();
 
-                        // KHÔI PHỤC VÒNG LẶP NGUYÊN BẢN CỦA VNPAY DEMO SDK
                         while (itr.hasNext()) {
                             String fieldName = itr.next();
                             String fieldValue = vnp_Params.get(fieldName);
                             if ((fieldValue != null) && (fieldValue.length() > 0)) {
 
-                                // Bộ mã mẫu bắt buộc sử dụng US_ASCII tên chuỗi cấu trúc mã hóa
                                 String encodedValue = URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII.toString());
                                 String encodedName = URLEncoder.encode(fieldName, StandardCharsets.US_ASCII.toString());
 
-                                // Build hash data: Tên tham số thô không mã hóa (Xem dòng 84 ajaxServlet.java)
                                 hashData.append(fieldName);
                                 hashData.append('=');
                                 hashData.append(encodedValue);
 
-                                // Build query: Mã hóa cả tên lẫn giá trị tham số điều hướng URL
                                 query.append(encodedName);
                                 query.append('=');
                                 query.append(encodedValue);
@@ -200,7 +194,6 @@ public class PaymentController {
                         }
 
                         String queryUrl = query.toString();
-                        // Thực hiện ký mã hash chuẩn xác
                         String vnp_SecureHash = VnPayConfig.hmacSHA512(VnPayConfig.vnp_HashSecret, hashData.toString());
                         queryUrl += "&vnp_SecureHash=" + vnp_SecureHash;
 
@@ -208,7 +201,6 @@ public class PaymentController {
                     }
                 }
 
-                // COD TRUYỀN THỐNG
                 int orderId = orderDAO.createOrder(user.getId(), totalPrice, paymentMethod);
                 if (orderId > 0) {
                     orderDAO.saveOrderDetails(orderId, cart.getItems());
@@ -234,35 +226,25 @@ public class PaymentController {
         String error = URLEncoder.encode("Yêu cầu không hợp lệ", StandardCharsets.UTF_8);
         return "redirect:/secure/cart?error=" + error;
     }
-    // =============================================================
-    // ROUTER: XỬ LÝ KHÁCH HÀNG BẤM "TÔI ĐÃ CHUYỂN KHOẢN" (VIETQR)
-    // =============================================================
+
     @PostMapping("/vietqr-confirm")
     public String vietqrConfirm(@RequestParam("orderId") String orderIdStr, Model model) {
         try {
             int orderId = Integer.parseInt(orderIdStr);
-
-            // Lấy thông tin đơn hàng từ Database
             Order order = orderDAO.getOrderById(orderId);
 
             if (order != null) {
-                // Truyền đơn hàng ra giao diện Invoice
                 model.addAttribute("order", order);
-
-                // Hiển thị thông báo trạng thái PENDING chờ duyệt
-                model.addAttribute("msg", "Đơn hàng #" + orderId + " đang ở trạng thái CHỜ XÁC NHẬN. Chúng tôi đang kiểm tra giao dịch chuyển khoản của bạn!");
-
+                model.addAttribute("msg", "Don hang #" + orderId + " dang o trang thai CHO XAC NHAN. Chung toi dang kiem tra giao dich chuyen khoan cua ban!");
                 return "secure/invoice";
             }
         } catch (Exception e) {
             LOGGER.severe("VietQR confirm error: " + e.getMessage());
         }
 
-        return "redirect:/secure/cart?error=" + URLEncoder.encode("Không tìm thấy đơn hàng để xác nhận.", StandardCharsets.UTF_8);
+        return "redirect:/secure/cart?error=" + URLEncoder.encode("Khong tim thay don hang de xac nhan.", StandardCharsets.UTF_8);
     }
-    // =============================================================
-    // ROUTER CALLBACK: ĐÃ SỬA THÊM KHỐI KIỂM TRA CHỮ KÝ BẢO MẬT PHẢN HỒI
-    // =============================================================
+
     @GetMapping("/vnpay-callback")
     public String vnpayCallback(HttpServletRequest request, HttpSession session, Model model) {
         String vnp_ResponseCode = request.getParameter("vnp_ResponseCode");
@@ -271,10 +253,9 @@ public class PaymentController {
         String vnp_SecureHashReceived = request.getParameter("vnp_SecureHash");
 
         if (vnp_TxnRef == null || vnp_TxnRef.isEmpty()) {
-            return "redirect:/secure/cart?error=" + URLEncoder.encode("Tham số phản hồi không hợp lệ.", StandardCharsets.UTF_8);
+            return "redirect:/secure/cart?error=" + URLEncoder.encode("Tham so phan hoi khong hop le.", StandardCharsets.UTF_8);
         }
 
-        // BẮT BUỘC: Lấy toàn bộ tham số trả về để kiểm tra tính toàn vẹn (Chữ ký phản hồi)
         Map<String, String> fields = new HashMap<>();
         for (Enumeration<String> params = request.getParameterNames(); params.hasMoreElements();) {
             String fieldName = params.nextElement();
@@ -286,7 +267,6 @@ public class PaymentController {
             }
         }
 
-        // Sắp xếp dữ liệu nhận về theo bảng chữ cái alphabet giống như hàm hashAllFields trong Config.java mẫu
         List<String> fieldNames = new ArrayList<>(fields.keySet());
         Collections.sort(fieldNames);
         StringBuilder sb = new StringBuilder();
@@ -296,24 +276,21 @@ public class PaymentController {
             String fieldValue = fields.get(fieldName);
             sb.append(fieldName);
             sb.append("=");
-            sb.append(fieldValue); // Dữ liệu nhận về từ request.getParameter đã tự decode, lấy trực tiếp không URL Encode nữa
+            sb.append(fieldValue);
             if (iterator.hasNext()) {
                 sb.append("&");
             }
         }
 
-        // Thực hiện tự tính toán chuỗi Hash phản hồi đầu cuối dựa vào HashSecret của bạn
         String signValue = VnPayConfig.hmacSHA512(VnPayConfig.vnp_HashSecret, sb.toString());
 
-        // Đối soát chữ ký nhận được vs Chữ ký hệ thống tự tính toán xem khớp nhau hay không
         if (vnp_SecureHashReceived == null || !signValue.equalsIgnoreCase(vnp_SecureHashReceived)) {
-            return "redirect:/secure/payment?error=" + URLEncoder.encode("Lỗi dữ liệu phản hồi: Chữ ký không hợp lệ!", StandardCharsets.UTF_8);
+            return "redirect:/secure/payment?error=" + URLEncoder.encode("Loi du lieu phan hoi: Chu ky khong hop le!", StandardCharsets.UTF_8);
         }
 
         int orderId = Integer.parseInt(vnp_TxnRef);
         double amountReal = Double.parseDouble(vnp_Amount) / 100;
-
-        try (Connection connection = DBConnectionPool.getDataSource().getConnection()) {
+        try (Connection connection = dataSource.getConnection()) {
             String paymentStatus = "FAILED";
 
             if ("00".equals(vnp_ResponseCode)) {
@@ -331,7 +308,7 @@ public class PaymentController {
                     session.setAttribute("cart", cart);
                 }
 
-                model.addAttribute("msg", "Thanh toán qua cổng VNPay thành công!");
+                model.addAttribute("msg", "Thanh toan qua cong VNPay thanh cong!");
             } else {
                 paymentStatus = "CANCELLED";
                 String updateOrderSql = "UPDATE `dbo.orders` SET status = 'CANCELLED' WHERE id = ?";
@@ -341,6 +318,7 @@ public class PaymentController {
                 }
             }
 
+            // Đồng bộ ghi nhận thông tin thanh toán
             String insertPaymentSql = "INSERT INTO `dbo.payment` (order_id, amount, payment_method, status) VALUES (?, ?, ?, ?)";
             try (PreparedStatement psPayment = connection.prepareStatement(insertPaymentSql)) {
                 psPayment.setInt(1, orderId);
@@ -355,15 +333,14 @@ public class PaymentController {
                 model.addAttribute("order", order);
                 return "secure/invoice";
             } else {
-                return "redirect:/secure/payment?error=" + URLEncoder.encode("Giao dịch thanh toán thất bại.", StandardCharsets.UTF_8);
+                return "redirect:/secure/payment?error=" + URLEncoder.encode("Giao dich thanh toan that bai.", StandardCharsets.UTF_8);
             }
 
         } catch (Exception e) {
             LOGGER.severe("VNPay callback error: " + e.getMessage());
-            return "redirect:/secure/payment?error=" + URLEncoder.encode("Lỗi xử lý giao dịch cơ sở dữ liệu.", StandardCharsets.UTF_8);
+            return "redirect:/secure/payment?error=" + URLEncoder.encode("Loi xu ly giao dich co so du lieu.", StandardCharsets.UTF_8);
         }
     }
-
 
     @GetMapping("/generateInvoicePDF")
     public void generateInvoicePDF(@RequestParam("orderId") String orderIdStr,
@@ -371,7 +348,7 @@ public class PaymentController {
                                    HttpSession session) throws IOException {
         User user = (User) session.getAttribute("user");
         if (user == null || orderIdStr == null || orderIdStr.isEmpty()) {
-            response.sendRedirect(session.getServletContext().getContextPath() + "/secure/payment?error=Yêu cầu không hợp lệ");
+            response.sendRedirect(session.getServletContext().getContextPath() + "/secure/payment?error=Yeu cau khong hop le");
             return;
         }
 
@@ -379,7 +356,7 @@ public class PaymentController {
             int orderId = Integer.parseInt(orderIdStr);
             Order order = orderDAO.getOrderById(orderId);
             if (order == null) {
-                response.sendRedirect(session.getServletContext().getContextPath() + "/secure/payment?error=Không tìm thấy hóa đơn");
+                response.sendRedirect(session.getServletContext().getContextPath() + "/secure/payment?error=Khong tim thay hoa don");
                 return;
             }
 
@@ -423,7 +400,7 @@ public class PaymentController {
 
         } catch (SQLException | NumberFormatException e) {
             LOGGER.severe("PDF generation error: " + e.getMessage());
-            response.sendRedirect(session.getServletContext().getContextPath() + "/secure/payment?error=Lỗi hệ thống hóa đơn");
+            response.sendRedirect(session.getServletContext().getContextPath() + "/secure/payment?error=Loi he thong hoa don");
         }
     }
 }

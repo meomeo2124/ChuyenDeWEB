@@ -1,18 +1,14 @@
 package controller.admin.management.category;
 
 import dao.CategoryDAO;
-import dao.DBConnectionPool;
 import models.Category;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.sql.Connection;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -21,30 +17,32 @@ import java.util.logging.Logger;
 public class AdminCategoryController {
 
     private static final Logger LOGGER = Logger.getLogger(AdminCategoryController.class.getName());
+    private final CategoryDAO categoryDAO;
 
-    // 1. Hiển thị danh sách danh mục (Thay thế ManageCategoryServlet)
+    @Autowired
+    public AdminCategoryController(CategoryDAO categoryDAO) {
+        this.categoryDAO = categoryDAO;
+    }
+
+    // 1. HIỂN THỊ DANH SÁCH DANH MỤC
     @GetMapping("/manage")
     public String manageCategories(Model model,
                                    @RequestParam(value = "msg", required = false) String msg,
                                    @RequestParam(value = "error", required = false) String error) {
-        try (Connection connection = DBConnectionPool.getDataSource().getConnection()) {
-            CategoryDAO categoryDAO = new CategoryDAO(connection);
+        try {
             List<Category> categoryList = categoryDAO.getAllCategories();
-
             model.addAttribute("categoryList", categoryList);
+
             if (msg != null) model.addAttribute("msg", msg);
             if (error != null) model.addAttribute("error", error);
-
-            // Forward thẳng ra thư mục /webapp/admin/ theo cấu trúc dự án của bạn
-            return "forward:/admin/admin_categories.jsp";
+            return "admin/admin_categories";
         } catch (Exception e) {
             LOGGER.severe("Error getting all categories: " + e.getMessage());
-            model.addAttribute("error", "Lỗi kết nối cơ sở dữ liệu khi tải danh sách danh mục.");
-            return "forward:/admin/admin_categories.jsp";
+            return "redirect:/error";
         }
     }
 
-    // 2. Xử lý thêm danh mục mới (Thay thế InsertCategoryServlet)
+    // 2. XỬ LÝ THÊM DANH MỤC MỚI
     @PostMapping("/insert")
     public String insertCategory(@RequestParam("title") String title,
                                  @RequestParam("description") String description) {
@@ -53,9 +51,7 @@ public class AdminCategoryController {
             return "redirect:/admin/category/manage?error=" + error;
         }
 
-        try (Connection connection = DBConnectionPool.getDataSource().getConnection()) {
-            CategoryDAO categoryDAO = new CategoryDAO(connection);
-
+        try {
             Category category = new Category();
             category.setTitle(title);
             category.setDescription(description);
@@ -75,28 +71,28 @@ public class AdminCategoryController {
         }
     }
 
-    // 3. Hiển thị Form chỉnh sửa danh mục (Thay thế EditCategoryServlet - doGet)
+    // 3. HIỂN THỊ FORM CHỈNH SỬA DANH MỤC
     @GetMapping("/edit")
     public String showEditForm(@RequestParam("id") int categoryId, Model model) {
-        try (Connection connection = DBConnectionPool.getDataSource().getConnection()) {
-            CategoryDAO categoryDAO = new CategoryDAO(connection);
+        try {
             Category category = categoryDAO.getCategoryById(categoryId);
 
             if (category != null) {
                 model.addAttribute("category", category);
-                return "forward:/admin/edit_category.jsp";
+                // ✅ ĐÃ SỬA: Hướng về View chuẩn Spring
+                return "admin/edit_category";
             } else {
                 String error = URLEncoder.encode("Danh mục không tồn tại.", StandardCharsets.UTF_8);
                 return "redirect:/admin/category/manage?error=" + error;
             }
         } catch (Exception e) {
             LOGGER.severe("Error fetching category for edit: " + e.getMessage());
-            String error = URLEncoder.encode("Lỗi kết nối khi tải thông tin danh mục.", StandardCharsets.UTF_8);
+            String error = URLEncoder.encode("Lỗi hệ thống khi tải thông tin danh mục.", StandardCharsets.UTF_8);
             return "redirect:/admin/category/manage?error=" + error;
         }
     }
 
-    // 4. Xử lý cập nhật thông tin danh mục (Thay thế EditCategoryServlet - doPost)
+    // 4. XỬ LÝ CẬP NHẬT THÔNG TIN DANH MỤC
     @PostMapping("/update")
     public String updateCategory(@RequestParam("id") int id,
                                  @RequestParam("title") String title,
@@ -106,9 +102,7 @@ public class AdminCategoryController {
             return "redirect:/admin/category/manage?error=" + error;
         }
 
-        try (Connection connection = DBConnectionPool.getDataSource().getConnection()) {
-            CategoryDAO categoryDAO = new CategoryDAO(connection);
-
+        try {
             Category category = new Category();
             category.setId(id);
             category.setTitle(title);
@@ -129,11 +123,10 @@ public class AdminCategoryController {
         }
     }
 
-    // 5. Xử lý xóa danh mục (Thay thế DeleteCategoryServlet - chuyển về POST để an toàn)
+    // 5. XỬ LÝ XÓA DANH MỤC (Bảo mật qua PostMapping)
     @PostMapping("/delete")
     public String deleteCategory(@RequestParam("id") int categoryId) {
-        try (Connection connection = DBConnectionPool.getDataSource().getConnection()) {
-            CategoryDAO categoryDAO = new CategoryDAO(connection);
+        try {
             boolean isDeleted = categoryDAO.deleteCategory(categoryId);
 
             if (isDeleted) {
@@ -145,7 +138,7 @@ public class AdminCategoryController {
             }
         } catch (Exception e) {
             LOGGER.severe("Error deleting category: " + e.getMessage());
-            String error = URLEncoder.encode("Lỗi kết nối cơ sở dữ liệu khi xóa.", StandardCharsets.UTF_8);
+            String error = URLEncoder.encode("Lỗi hệ thống khi xóa danh mục.", StandardCharsets.UTF_8);
             return "redirect:/admin/category/manage?error=" + error;
         }
     }

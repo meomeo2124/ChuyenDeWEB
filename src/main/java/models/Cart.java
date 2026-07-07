@@ -2,7 +2,6 @@ package models;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import dao.ProductDAO;
 
 public class Cart {
     private int cartId;
@@ -14,10 +13,7 @@ public class Cart {
         this.userId = userId;
         this.items = new ConcurrentHashMap<>();
     }
-
-    public synchronized void addItem(int productId, int quantity) {
-        ProductDAO dao = new ProductDAO();
-        Product product = dao.getProductById(productId);
+    public synchronized void addItem(Product product, int quantity) {
         if (product == null) {
             throw new IllegalArgumentException("Product cannot be null.");
         }
@@ -25,7 +21,7 @@ public class Cart {
             throw new IllegalArgumentException("Invalid quantity. Stock available: " + product.getStock());
         }
         CartItem item = new CartItem(product, quantity);
-        items.put(productId, item);
+        items.put(product.getId(), item);
     }
 
     public synchronized void updateQuantity(int productId, int quantity) {

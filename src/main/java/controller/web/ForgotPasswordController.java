@@ -1,9 +1,9 @@
 package controller.web;
 
 import dao.UserDAO;
-import dao.DBConnectionPool;
 import jakarta.servlet.http.HttpSession;
 import models.User;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,13 +14,17 @@ import utool.JavaMailUtil;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.sql.Connection;
 import java.util.logging.Logger;
 
 @Controller
 public class ForgotPasswordController {
 
     private static final Logger LOGGER = Logger.getLogger(ForgotPasswordController.class.getName());
+    private final UserDAO userDAO;
+    @Autowired
+    public ForgotPasswordController(UserDAO userDAO) {
+        this.userDAO = userDAO;
+    }
 
     // 1. Hiển thị trang Nhập email / Nhập mã OTP
     @GetMapping("/getAuthCode")
@@ -30,7 +34,7 @@ public class ForgotPasswordController {
         return "ResetPassword";
     }
 
-    // 2. Chặn lỗi 405 khi hệ thống tự động chuyển hướng hoặc người dùng truy cập trực tiếp bằng GET
+    // 2. Chặn lỗi 405 khi hệ thống tự động chuyển hướng
     @GetMapping("/VerifyEmail")
     public String handleVerifyEmailGet() {
         return "redirect:/getAuthCode";
@@ -39,9 +43,8 @@ public class ForgotPasswordController {
     // 3. Xử lý nhận Email và gửi mã xác nhận
     @PostMapping("/getAuthCode")
     public String handleGetAuthCode(@RequestParam("email") String email, HttpSession session, Model model) {
-        try (Connection connection = DBConnectionPool.getDataSource().getConnection()) {
-            UserDAO userdao = new UserDAO(connection);
-            User user = userdao.findByEmail(email);
+        try {
+            User user = userDAO.findByEmail(email);
 
             if (user == null) {
                 model.addAttribute("message", "Không tìm thấy người dùng với email này.");
@@ -63,8 +66,8 @@ public class ForgotPasswordController {
 
             return "ResetPassword";
         } catch (Exception e) {
-            LOGGER.severe("Database connection error: " + e.getMessage());
-            model.addAttribute("message", "Lỗi kết nối hệ thống dữ liệu.");
+            LOGGER.severe("Error in handleGetAuthCode: " + e.getMessage());
+            model.addAttribute("message", "Lỗi xử lý hệ thống dữ liệu.");
             return "ResetPassword";
         }
     }
@@ -87,16 +90,14 @@ public class ForgotPasswordController {
                 // KIỂM TRA LUỒNG: ĐĂNG KÝ TÀI KHOẢN MỚI
                 User tempUser = (User) session.getAttribute("tempUser");
                 if (tempUser != null) {
-                    try (Connection connection = DBConnectionPool.getDataSource().getConnection()) {
-                        UserDAO userdao = new UserDAO(connection);
-                        userdao.insertUser(tempUser);
+                    try {
+                        userDAO.insertUser(tempUser);
 
                         // Dọn dẹp session sạch sẽ sau khi đăng ký thành công
                         session.removeAttribute("tempUser");
                         session.removeAttribute("authCode");
 
                         String successMsg = URLEncoder.encode("Đăng ký thành công! Vui lòng đăng nhập.", StandardCharsets.UTF_8);
-                        // ĐÃ SỬA: Đổi từ success= sang msg= để AuthController hứng chuẩn xác
                         return "redirect:/login?msg=" + successMsg;
                     } catch (Exception e) {
                         model.addAttribute("message", "Lỗi khi lưu tài khoản: " + e.getMessage());

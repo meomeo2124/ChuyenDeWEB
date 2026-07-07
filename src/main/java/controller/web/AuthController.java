@@ -4,10 +4,10 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
-import dao.DBConnectionPool;
 import dao.UserDAO;
 import jakarta.servlet.http.HttpSession;
 import models.User;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,13 +18,19 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.sql.Connection;
 import java.util.Collections;
 
 @Controller
 public class AuthController {
 
-    // 1. Hiển thị trang Login (Nhận thêm tham số báo lỗi truyền từ redirect qua)
+    private final UserDAO userDAO;
+
+    @Autowired
+    public AuthController(UserDAO userDAO) {
+        this.userDAO = userDAO;
+    }
+
+    // 1. Hiển thị trang Login
     @GetMapping("/login")
     public String showLoginPage(@RequestParam(value = "error", required = false) String error,
                                 @RequestParam(value = "msg", required = false) String msg,
@@ -34,29 +40,26 @@ public class AuthController {
         } else if ("missing_credentials".equals(error)) {
             model.addAttribute("message", "Vui lòng nhập đầy đủ thông tin đăng nhập.");
         } else if (msg != null) {
-            model.addAttribute("message", msg); // Hiển thị thông báo sai mật khẩu hoặc thông báo đăng ký thành công
+            model.addAttribute("message", msg);
         }
+        // Hướng về file views/Login.jsp
         return "Login";
     }
 
-    // Dự phòng: Nếu có bất kỳ luồng nào cố tình gọi GET/Forward nhầm phương thức, ép trả về giao diện gốc
     @RequestMapping(value = "/login", method = {RequestMethod.HEAD})
     public String fallbackLogin() {
         return "redirect:/login";
     }
 
-    // 2. Xử lý dữ liệu Đăng nhập bằng phương thức POST
+    // 2. Xử lý dữ liệu Đăng nhập
     @PostMapping("/login")
     public String handleLogin(
             @RequestParam(value = "credential", required = false) String idTokenString,
             @RequestParam(value = "email", required = false) String email,
             @RequestParam(value = "password", required = false) String pass,
             HttpSession session) {
-
-        try (Connection connection = DBConnectionPool.getDataSource().getConnection()) {
-            UserDAO userDAO = new UserDAO(connection);
-
-            // ================= LUỒNG 1: ĐĂNG NHẬP BẰNG GOOGLE =================
+        try {
+            // LUỒNG 1: ĐĂNG NHẬP BẰNG GOOGLE
             if (idTokenString != null && !idTokenString.isEmpty()) {
                 GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(), GsonFactory.getDefaultInstance())
                         .setAudience(Collections.singletonList("564628514231-g4733rfvad9m98vffpn5iofj3ht90u1t.apps.googleusercontent.com"))
@@ -75,8 +78,9 @@ public class AuthController {
                         user = new User();
                         user.setGoogleId(googleId);
                         user.setEmail(googleEmail);
-                        user.setName(name);
+                        user.setUsername(name);
                         user.setImg(img);
+                        user.setIsAdmin(false);
                         userDAO.insertUser(user);
                     } else if (user.getGoogleId() == null) {
                         user.setGoogleId(googleId);
@@ -84,26 +88,30 @@ public class AuthController {
                     }
 
                     setSessionUser(session, user);
-                    return "redirect:/home";
+
+                    if (user.getIsAdmin()) {
+                        return "redirect:/admin/dashboard";
+                    }
+                    return "redirect:/";
                 } else {
                     return "redirect:/login?error=google_token_invalid";
                 }
             }
 
-            // ================= LUỒNG 2: ĐĂNG NHẬP TRUYỀN THỐNG (EMAIL/PASS) =================
+            // LUỒNG 2: ĐĂNG NHẬP TRUYỀN THỐNG (EMAIL/PASS)
             else if (email != null && pass != null) {
                 User user = userDAO.getLogin(email, pass);
                 if (user == null) {
-                    // ĐÃ SỬA: Không return "Login" trực tiếp nữa. Tiến hành redirect về GET để làm sạch URL.
                     String flashMsg = URLEncoder.encode("Sai thông tin tài khoản hoặc mật khẩu", StandardCharsets.UTF_8);
                     return "redirect:/login?msg=" + flashMsg;
                 } else {
                     setSessionUser(session, user);
 
-                    if (user.isAdmin()) {
-                        return "redirect:/admin/dashboard.jsp";
+                    // ✅ ĐÃ SỬA: Chuyển từ user.isAdmin() sang user.getIsAdmin() cho đúng Model của bạn
+                    if (user.getIsAdmin()) {
+                        return "redirect:/admin/dashboard";
                     } else {
-                        return "redirect:/home";
+                        return "redirect:/";
                     }
                 }
             } else {
