@@ -9,11 +9,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.*;
 import utool.HelperClass;
 import utool.JavaMailUtil;
+import org.springframework.http.ResponseEntity;
+import java.util.HashMap;
+import java.util.Map;
 
 @Controller
 public class RegisterController {
@@ -83,6 +84,25 @@ public class RegisterController {
             // Lỗi hệ thống chung (Database rớt, v.v.)
             bindingResult.reject("globalError", "Lỗi hệ thống: " + e.getMessage());
             return "Register";
+        }
+    }
+
+    // ==========================================
+    // TÍNH NĂNG AJAX: Kiểm tra Email tồn tại
+    // ==========================================
+    @GetMapping("/api/check-email")
+    @ResponseBody
+    public ResponseEntity<Map<String, Boolean>> checkEmailAJAX(@RequestParam("email") String email) {
+        Map<String, Boolean> response = new HashMap<>();
+        try {
+            // Nếu DAO tìm thấy user -> true (email đã tồn tại)
+            boolean exists = (userDAO.findByEmail(email) != null);
+            response.put("exists", exists);
+
+            return ResponseEntity.ok(response); // Trả về dạng { "exists": true/false }
+        } catch (Exception e) {
+            response.put("exists", false);
+            return ResponseEntity.status(500).body(response);
         }
     }
 }
