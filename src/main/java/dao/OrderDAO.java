@@ -8,7 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import java.sql.Timestamp;
+import java.util.Date;  // ← Thêm import này
 import java.util.List;
 import java.util.Map;
 
@@ -24,11 +24,11 @@ public class OrderDAO {
         order.setUserId(userId);
         order.setTotalPrice(totalPrice);
         order.setStatus("PENDING");
-        order.setOrderDate(new Timestamp(System.currentTimeMillis()));
+        order.setOrderDate(new Date());  // ✅ Fix: dùng java.util.Date
         order.setPaymentMethod(paymentMethod != null ? paymentMethod : "CASH");
 
         entityManager.persist(order);
-        return order.getId(); // Khóa chính tự sinh sau khi persist()
+        return order.getId();
     }
 
     public void saveOrderDetails(int orderId, Map<Integer, CartItem> cartItems) {
@@ -47,8 +47,8 @@ public class OrderDAO {
     public List<Order> getOrdersBySubsets(String startDate, String endDate) {
         return entityManager.createQuery(
                         "SELECT o FROM Order o WHERE o.orderDate BETWEEN :startDate AND :endDate ORDER BY o.orderDate DESC", Order.class)
-                .setParameter("startDate", Timestamp.valueOf(startDate))
-                .setParameter("endDate", Timestamp.valueOf(endDate))
+                .setParameter("startDate", java.sql.Timestamp.valueOf(startDate))
+                .setParameter("endDate", java.sql.Timestamp.valueOf(endDate))
                 .getResultList();
     }
 
@@ -63,7 +63,6 @@ public class OrderDAO {
             entityManager.merge(order);
         }
 
-        // Sửa lại thành ?1 và ?2
         entityManager.createNativeQuery("UPDATE payment SET status = ?1 WHERE order_id = ?2")
                 .setParameter(1, status)
                 .setParameter(2, orderId)
