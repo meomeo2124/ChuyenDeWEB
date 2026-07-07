@@ -7,25 +7,29 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import javax.sql.DataSource;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
 
 import models.Category;
 import models.Product;
 
+@Repository
 public class ProductDAO {
-    private Connection con;
 
-    public ProductDAO(Connection connection) {
-        this.con = connection;
-    }
-
-    public ProductDAO() {
+    private final DataSource dataSource;
+    @Autowired
+    public ProductDAO(DataSource dataSource) {
+        this.dataSource = dataSource;
     }
 
     // 1. Lấy sản phẩm theo ID
     public Product getProductById(int id) {
         Product product = null;
         String sql = "SELECT * FROM `dbo.product` WHERE id = ?";
-        try (Connection connection = DBConnectionPool.getDataSource().getConnection();
+        // 🌟 4. Thay thế việc gọi pool static bằng biến dataSource local của Spring
+        try (Connection connection = dataSource.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setInt(1, id);
             ResultSet resultSet = statement.executeQuery();
@@ -49,10 +53,10 @@ public class ProductDAO {
         return product;
     }
 
-    // 2. Thêm sản phẩm mới (ĐÃ BỔ SUNG CỘT category_id)
+    // 2. Thêm sản phẩm mới
     public void addProduct(Product product) throws SQLException {
         String query = "INSERT INTO `dbo.product` (product_name, description, images, price, stock, category_id) VALUES (?, ?, ?, ?, ?, ?)";
-        try (Connection connection = DBConnectionPool.getDataSource().getConnection();
+        try (Connection connection = dataSource.getConnection();
              PreparedStatement statement = connection.prepareStatement(query)) {
             statement.setString(1, product.getName());
             statement.setString(2, product.getDescription());
@@ -60,7 +64,6 @@ public class ProductDAO {
             statement.setDouble(4, product.getPrice());
             statement.setInt(5, product.getStock());
 
-            // Tham số thứ 6: category_id
             if (product.getCategory() != null) {
                 statement.setInt(6, product.getCategory().getId());
             } else {
@@ -75,7 +78,7 @@ public class ProductDAO {
     public List<Product> getAllProducts() {
         List<Product> products = new ArrayList<>();
         String sql = "SELECT * FROM `dbo.product`";
-        try (Connection connection = DBConnectionPool.getDataSource().getConnection();
+        try (Connection connection = dataSource.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql);
              ResultSet resultSet = statement.executeQuery()) {
             while (resultSet.next()) {
@@ -102,7 +105,7 @@ public class ProductDAO {
     // 4. Cập nhật thông tin sản phẩm
     public void updateProduct(Product product) {
         String sql = "UPDATE `dbo.product` SET product_name = ?, description = ?, images = ?, price = ?, stock = ?, category_id = ? WHERE id = ?";
-        try (Connection connection = DBConnectionPool.getDataSource().getConnection();
+        try (Connection connection = dataSource.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, product.getName());
             statement.setString(2, product.getDescription());
@@ -110,14 +113,11 @@ public class ProductDAO {
             statement.setDouble(4, product.getPrice());
             statement.setInt(5, product.getStock());
 
-            // Tham số thứ 6: category_id
             if (product.getCategory() != null) {
                 statement.setInt(6, product.getCategory().getId());
             } else {
                 statement.setNull(6, java.sql.Types.INTEGER);
             }
-
-            // Tham số thứ 7: id điều kiện WHERE
             statement.setInt(7, product.getId());
 
             statement.executeUpdate();
@@ -130,7 +130,7 @@ public class ProductDAO {
     // 5. Xóa sản phẩm
     public void deleteProduct(int id) {
         String sql = "DELETE FROM `dbo.product` WHERE id = ?";
-        try (Connection connection = DBConnectionPool.getDataSource().getConnection();
+        try (Connection connection = dataSource.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setInt(1, id);
             statement.executeUpdate();
@@ -144,13 +144,13 @@ public class ProductDAO {
     public Category getCategoryById(int categoryId) {
         Category category = null;
         String sql = "SELECT * FROM `dbo.product_categories` WHERE id = ?";
-        try (Connection connection = DBConnectionPool.getDataSource().getConnection();
+        try (Connection connection = dataSource.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setInt(1, categoryId);
             ResultSet resultSet = statement.executeQuery();
             if (resultSet.next()) {
                 category = new Category();
-                category.setId(resultSet.getShort("id")); // Hoặc getInt tùy thuộc kiểu dữ liệu Model của bạn
+                category.setId(resultSet.getShort("id"));
                 category.setTitle(resultSet.getString("category_name"));
                 category.setDescription(resultSet.getString("description"));
             }
@@ -161,11 +161,11 @@ public class ProductDAO {
         return category;
     }
 
-    // Lấy tất cả danh mục (dùng cho form thêm/sửa sản phẩm)
+    // Lấy tất cả danh mục
     public List<Category> getAllCategories() {
         List<Category> categories = new ArrayList<>();
         String sql = "SELECT * FROM `dbo.product_categories`";
-        try (Connection connection = DBConnectionPool.getDataSource().getConnection();
+        try (Connection connection = dataSource.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql);
              ResultSet resultSet = statement.executeQuery()) {
             while (resultSet.next()) {
@@ -186,7 +186,7 @@ public class ProductDAO {
     public List<Product> getProductsByCategoryId(int categoryId) {
         List<Product> productList = new ArrayList<>();
         String sql = "SELECT * FROM `dbo.product` WHERE category_id = ?";
-        try (Connection connection = DBConnectionPool.getDataSource().getConnection();
+        try (Connection connection = dataSource.getConnection();
              PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setInt(1, categoryId);
             ResultSet rs = pstmt.executeQuery();
@@ -214,7 +214,7 @@ public class ProductDAO {
     public List<Product> searchProductByName(String name) {
         List<Product> list = new ArrayList<>();
         String sql = "SELECT * FROM `dbo.product` WHERE product_name LIKE ?";
-        try (Connection connection = DBConnectionPool.getDataSource().getConnection();
+        try (Connection connection = dataSource.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, "%" + name + "%");
             ResultSet resultSet = statement.executeQuery();
@@ -244,7 +244,7 @@ public class ProductDAO {
     public List<Product> filteringProductByPrice(double minPrice, double maxPrice) {
         List<Product> list = new ArrayList<>();
         String sql = "SELECT * FROM `dbo.product` WHERE price BETWEEN ? AND ?";
-        try (Connection connection = DBConnectionPool.getDataSource().getConnection();
+        try (Connection connection = dataSource.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setDouble(1, minPrice);
             statement.setDouble(2, maxPrice);
@@ -275,7 +275,7 @@ public class ProductDAO {
     public List<Product> getTop4() {
         List<Product> list = new ArrayList<>();
         String sql = "SELECT TOP 4 * FROM `dbo.product`";
-        try (Connection connection = DBConnectionPool.getDataSource().getConnection();
+        try (Connection connection = dataSource.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql);
              ResultSet resultSet = statement.executeQuery()) {
             while (resultSet.next()) {
@@ -304,7 +304,7 @@ public class ProductDAO {
     public List<Product> getNext4(int amount) {
         List<Product> list = new ArrayList<>();
         String sql = "SELECT * FROM `dbo.product` ORDER BY id OFFSET ? ROWS FETCH NEXT 3 ROWS ONLY";
-        try (Connection connection = DBConnectionPool.getDataSource().getConnection();
+        try (Connection connection = dataSource.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setInt(1, amount);
             ResultSet resultSet = statement.executeQuery();
@@ -334,7 +334,7 @@ public class ProductDAO {
     public double getTotalRevenue() {
         double totalRevenue = 0;
         String query = "SELECT SUM(price) AS totalRevenue FROM `dbo.product`";
-        try (Connection connection = DBConnectionPool.getDataSource().getConnection();
+        try (Connection connection = dataSource.getConnection();
              Statement statement = connection.createStatement();
              ResultSet rs = statement.executeQuery(query)) {
             if (rs.next()) {

@@ -3,21 +3,29 @@ package dao;
 import models.Cart;
 import models.CartItem;
 import models.Product;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
 
+import javax.sql.DataSource;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
-
+@Repository
 public class CartDAO {
-    private Connection connection;
 
-    public CartDAO(Connection connection) {
-        this.connection = connection;
+    private final DataSource dataSource;
+    private final ProductDAO productDAO;
+
+    @Autowired
+    public CartDAO(DataSource dataSource, ProductDAO productDAO) {
+        this.dataSource = dataSource;
+        this.productDAO = productDAO;
     }
 
     public Cart getCartByUserId(int userId) throws SQLException {
         String sql = "SELECT * FROM `dbo.cart` WHERE UserId = ?";
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setInt(1, userId);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
@@ -36,8 +44,9 @@ public class CartDAO {
 
     public void createCart(Cart cart) throws SQLException {
         String query = "INSERT INTO `dbo.cart` (UserId) VALUES (?)";
-        try (PreparedStatement stmt = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
-            stmt.setLong(1, cart.getUserId()); // Sử dụng setLong vì UserId là bigint
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement stmt = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
+            stmt.setLong(1, cart.getUserId());
             int rowsAffected = stmt.executeUpdate();
             if (rowsAffected > 0) {
                 try (ResultSet rs = stmt.getGeneratedKeys()) {
@@ -57,10 +66,13 @@ public class CartDAO {
     public void updateCart(Cart cart) throws SQLException {
         String deleteItems = "DELETE FROM `dbo.cartitem` WHERE CartId = ?";
         String insertItem = "INSERT INTO `dbo.cartitem` (CartId, ProductId, Quantity) VALUES (?, ?, ?)";
-        try (PreparedStatement deleteStmt = connection.prepareStatement(deleteItems);
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement deleteStmt = connection.prepareStatement(deleteItems);
              PreparedStatement insertStmt = connection.prepareStatement(insertItem)) {
+
             deleteStmt.setInt(1, cart.getCartId());
             deleteStmt.executeUpdate();
+
             for (CartItem item : cart.getItems().values()) {
                 insertStmt.setInt(1, cart.getCartId());
                 insertStmt.setInt(2, item.getProductId());
@@ -74,10 +86,11 @@ public class CartDAO {
     public List<CartItem> getCartItems(int cartId) throws SQLException {
         String query = "SELECT * FROM `dbo.cartitem` WHERE CartId = ?";
         List<CartItem> items = new ArrayList<>();
-        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement stmt = connection.prepareStatement(query)) {
             stmt.setInt(1, cartId);
             try (ResultSet rs = stmt.executeQuery()) {
-                ProductDAO productDAO = new ProductDAO();
+                // 🌟 5. XÓA BỎ 'new ProductDAO()' cũ, tận dụng luôn thuộc tính 'productDAO' được Spring tiêm ở trên
                 while (rs.next()) {
                     int productId = rs.getInt("ProductId");
                     int quantity = rs.getInt("Quantity");
@@ -93,7 +106,8 @@ public class CartDAO {
 
     public void clearCart(int cartId) throws SQLException {
         String query = "DELETE FROM `dbo.cartitem` WHERE CartId = ?";
-        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement stmt = connection.prepareStatement(query)) {
             stmt.setInt(1, cartId);
             stmt.executeUpdate();
         }
@@ -101,7 +115,8 @@ public class CartDAO {
 
     public boolean removeCartItem(int cartId, int productId) throws SQLException {
         String query = "DELETE FROM `dbo.cartitem` WHERE CartId = ? AND ProductId = ?";
-        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement stmt = connection.prepareStatement(query)) {
             stmt.setInt(1, cartId);
             stmt.setInt(2, productId);
             int rowsAffected = stmt.executeUpdate();

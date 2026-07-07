@@ -11,7 +11,7 @@
 
 
 	<!-- Navbar -->
-	<%@ include file="template/includes/navbar.jsp"%>
+	<%@ include file="../../template/includes/navbar.jsp"%>
 
 	<div align="center">
 

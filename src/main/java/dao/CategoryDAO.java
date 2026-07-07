@@ -3,21 +3,26 @@ package dao;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import javax.sql.DataSource;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
 import models.Category;
 
+@Repository
 public class CategoryDAO {
-    private Connection connection;
 
-    public CategoryDAO(Connection connection) {
-        this.connection = connection;
+    private final DataSource dataSource;
+
+    @Autowired
+    public CategoryDAO(DataSource dataSource) {
+        this.dataSource = dataSource;
     }
-
-    public CategoryDAO() {}
 
     public List<Category> getAllCategories() {
         List<Category> categoriesList = new ArrayList<>();
         String query = "SELECT * FROM `dbo.product_categories`";
-        try (Connection conn = DBConnectionPool.getDataSource().getConnection();
+        try (Connection conn = dataSource.getConnection();
              Statement statement = conn.createStatement();
              ResultSet rs = statement.executeQuery(query)) {
             while (rs.next()) {
@@ -34,12 +39,12 @@ public class CategoryDAO {
     }
 
     public boolean addCategory(Category category) {
-        String query = "SELECT MAX(id) FROM `dbo.product_categories`";
+        String queryMaxId = "SELECT MAX(id) FROM `dbo.product_categories`";
         int newId = 0;
 
-        try (Connection conn = DBConnectionPool.getDataSource().getConnection();
+        try (Connection conn = dataSource.getConnection();
              Statement statement = conn.createStatement();
-             ResultSet rs = statement.executeQuery(query)) {
+             ResultSet rs = statement.executeQuery(queryMaxId)) {
 
             if (rs.next()) {
                 newId = rs.getInt(1) + 1;
@@ -49,10 +54,10 @@ public class CategoryDAO {
             return false;
         }
 
-        query = "INSERT INTO `dbo.product_categories` (id, category_name, description) VALUES (?, ?, ?)";
+        String queryInsert = "INSERT INTO `dbo.product_categories` (id, category_name, description) VALUES (?, ?, ?)";
 
-        try (Connection conn = DBConnectionPool.getDataSource().getConnection();
-             PreparedStatement statement = conn.prepareStatement(query)) {
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement statement = conn.prepareStatement(queryInsert)) {
 
             statement.setInt(1, newId);
             statement.setString(2, category.getTitle());
@@ -67,7 +72,7 @@ public class CategoryDAO {
 
     public boolean updateCategory(Category category) {
         String query = "UPDATE `dbo.product_categories` SET category_name = ?, description = ? WHERE id = ?";
-        try (Connection conn = DBConnectionPool.getDataSource().getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(query)) {
             stmt.setString(1, category.getTitle());
             stmt.setString(2, category.getDescription());
@@ -81,7 +86,7 @@ public class CategoryDAO {
 
     public boolean deleteCategory(int id) {
         String query = "DELETE FROM `dbo.product_categories` WHERE id = ?";
-        try (Connection conn = DBConnectionPool.getDataSource().getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(query)) {
             stmt.setInt(1, id);
             return stmt.executeUpdate() > 0;
@@ -91,10 +96,9 @@ public class CategoryDAO {
         return false;
     }
 
-    // ĐÃ SỬA: Lấy connection trực tiếp từ DataSource để tránh dính lỗi NullPointerException trên Dashboard
     public int getTotalCategories() {
         String query = "SELECT COUNT(*) FROM `dbo.product_categories`";
-        try (Connection conn = DBConnectionPool.getDataSource().getConnection();
+        try (Connection conn = dataSource.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(query)) {
             if (rs.next()) {
@@ -109,7 +113,7 @@ public class CategoryDAO {
     public Category getCategoryById(int id) {
         Category category = null;
         String query = "SELECT * FROM `dbo.product_categories` WHERE id = ?";
-        try (Connection conn = DBConnectionPool.getDataSource().getConnection();
+        try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(query)) {
             stmt.setInt(1, id);
             try (ResultSet rs = stmt.executeQuery()) {

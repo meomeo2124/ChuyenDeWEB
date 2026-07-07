@@ -2,12 +2,12 @@ package controller.web;
 
 import dao.CartDAO;
 import dao.CartItemDAO;
-import dao.DBConnectionPool;
 import dao.ProductDAO;
 import jakarta.servlet.http.HttpSession;
 import models.Cart;
 import models.Product;
 import models.User;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
@@ -25,9 +24,20 @@ import java.util.Map;
 @Controller
 public class CartController {
 
-    // =========================================================================
-    // 1. HIỂN THỊ GIỎ HÀNG (Thay thế cho doGet của CartServlet cũ)
-    // =========================================================================
+    private final CartDAO cartDAO;
+    private final CartItemDAO cartItemDAO;
+    private final ProductDAO productDAO;
+
+
+    @Autowired
+    public CartController(CartDAO cartDAO, CartItemDAO cartItemDAO, ProductDAO productDAO) {
+        this.cartDAO = cartDAO;
+        this.cartItemDAO = cartItemDAO;
+        this.productDAO = productDAO;
+    }
+
+
+    // 1. HIỂN THỊ GIỎ HÀNG
     @GetMapping("/secure/cart")
     public String showCartPage(HttpSession session, Model model) {
         User user = (User) session.getAttribute("user");
@@ -35,11 +45,10 @@ public class CartController {
             return "redirect:/login";
         }
 
-        try (Connection connection = DBConnectionPool.getDataSource().getConnection()) {
+        try {
             System.out.println("Fetching the cart for userId: " + user.getId());
-            CartDAO cartDAO = new CartDAO(connection);
-
-            Cart cart = getOrCreateCart(user.getId(), cartDAO);
+            // 🌟 3. Gọi trực tiếp từ Spring Bean thay vì mở Connection thủ công
+            Cart cart = getOrCreateCart(user.getId());
 
             if (cart != null) {
                 if (cart.getItems().isEmpty()) {
@@ -56,13 +65,11 @@ public class CartController {
             model.addAttribute("errorMessage", "Error processing request.");
         }
 
-        // Trỏ thẳng vào WEB-INF/views/secure/cart.jsp (Sau khi bạn đã di chuyển file jsp vào thư mục views)
         return "secure/cart";
     }
 
-    // =========================================================================
-    // 2. THÊM VÀO GIỎ HÀNG (Form Submit truyền thống từ trang chi tiết sản phẩm)
-    // =========================================================================
+
+    // 2. THÊM VÀO GIỎ HÀNG
     @PostMapping("/addToCart")
     public String handleAddToCartForm(
             @RequestParam("productId") int productId,
@@ -79,40 +86,35 @@ public class CartController {
                 throw new IllegalArgumentException("Số lượng phải lớn hơn 0");
             }
 
-            try (Connection connection = DBConnectionPool.getDataSource().getConnection()) {
-                ProductDAO productDAO = new ProductDAO();
-                Product product = productDAO.getProductById(productId);
-                if (product == null) throw new IllegalArgumentException("Sản phẩm không tồn tại");
-                if (quantity > product.getStock()) throw new IllegalArgumentException("Không đủ hàng trong kho.");
+            // 🌟 4. Loại bỏ hoàn toàn khối mở Connection và các từ khóa new DAO() rác
+            Product product = productDAO.getProductById(productId);
+            if (product == null) throw new IllegalArgumentException("Sản phẩm không tồn tại");
+            if (quantity > product.getStock()) throw new IllegalArgumentException("Không đủ hàng trong kho.");
 
-                CartDAO cartDAO = new CartDAO(connection);
-                Cart cart = getOrCreateCart(user.getId(), cartDAO);
-                CartItemDAO cartItemDAO = new CartItemDAO();
+            Cart cart = getOrCreateCart(user.getId());
 
-                if (cart.getItems().containsKey(productId)) {
-                    int currentQuantity = cartItemDAO.getQuantity(cart, product);
-                    int newQuantity = currentQuantity + quantity;
-                    if (newQuantity > product.getStock()) throw new IllegalArgumentException("Tổng số lượng vượt quá tồn kho.");
-                    cartItemDAO.setQuantity(cart, product, newQuantity);
-                } else {
-                    cartItemDAO.addCartItem(cart, product, quantity);
-                }
-
-                cart = cartDAO.getCartByUserId(user.getId());
-                session.setAttribute("cart", cart);
-
-                String successMsg = URLEncoder.encode("Thêm vào giỏ hàng thành công", StandardCharsets.UTF_8.toString());
-                return "redirect:/secure/cart?success=" + successMsg;
+            if (cart.getItems().containsKey(productId)) {
+                int currentQuantity = cartItemDAO.getQuantity(cart, product);
+                int newQuantity = currentQuantity + quantity;
+                if (newQuantity > product.getStock()) throw new IllegalArgumentException("Tổng số lượng vượt quá tồn kho.");
+                cartItemDAO.setQuantity(cart, product, newQuantity);
+            } else {
+                cartItemDAO.addCartItem(cart, product, quantity);
             }
+
+            cart = cartDAO.getCartByUserId(user.getId());
+            session.setAttribute("cart", cart);
+
+            String successMsg = URLEncoder.encode("Thêm vào giỏ hàng thành công", StandardCharsets.UTF_8.toString());
+            return "redirect:/secure/cart?success=" + successMsg;
+
         } catch (Exception e) {
             e.printStackTrace();
             return redirectToProductDetailWithError(productId, e.getMessage());
         }
     }
 
-    // =========================================================================
-    // 3. XÓA ITEM KHỎI GIỎ HÀNG (AJAX - Trả về JSON)
-    // =========================================================================
+    // 3. XÓA ITEM KHỎI GIỎ HÀNG
     @PostMapping(value = "/secure/cart", params = "action=removeItem")
     @ResponseBody
     public Map<String, Object> ajaxRemoveItem(@RequestParam("id") int productId, HttpSession session) {
@@ -125,16 +127,13 @@ public class CartController {
             return responseJson;
         }
 
-        try (Connection connection = DBConnectionPool.getDataSource().getConnection()) {
-            CartDAO cartDAO = new CartDAO(connection);
-            Cart cart = getOrCreateCart(user.getId(), cartDAO);
-
+        try {
+            Cart cart = getOrCreateCart(user.getId());
             cartDAO.removeCartItem(cart.getCartId(), productId);
 
-            // Tải lại giỏ hàng mới nhất để tính toán lại tổng tiền
             cart = cartDAO.getCartByUserId(user.getId());
             double subtotal = cart.getTotalPrice();
-            double shipping = (subtotal > 0) ? 10.00 : 0.00;
+            double shipping = (subtotal > 0) ? 15000.00 : 0.00;
             double total = subtotal + shipping;
 
             session.setAttribute("cart", cart);
@@ -152,9 +151,7 @@ public class CartController {
         return responseJson;
     }
 
-    // =========================================================================
-    // 4. CẬP NHẬT SỐ LƯỢNG (AJAX - Trả về JSON)
-    // =========================================================================
+    // 4. CẬP NHẬT SỐ LƯỢNG
     @PostMapping(value = "/secure/cart", params = "action=updateQuantity")
     @ResponseBody
     public Map<String, Object> ajaxUpdateQuantity(
@@ -177,11 +174,8 @@ public class CartController {
             return responseJson;
         }
 
-        try (Connection connection = DBConnectionPool.getDataSource().getConnection()) {
-            CartDAO cartDAO = new CartDAO(connection);
-            Cart cart = getOrCreateCart(user.getId(), cartDAO);
-
-            ProductDAO productDAO = new ProductDAO();
+        try {
+            Cart cart = getOrCreateCart(user.getId());
             Product product = productDAO.getProductById(productId);
 
             if (product == null || quantity > product.getStock()) {
@@ -190,12 +184,11 @@ public class CartController {
                 return responseJson;
             }
 
-            CartItemDAO cartItemDAO = new CartItemDAO();
             cartItemDAO.setQuantity(cart, product, quantity);
 
             cart = cartDAO.getCartByUserId(user.getId());
             double subtotal = cart.getTotalPrice();
-            double shipping = (subtotal > 0) ? 10.00 : 0.00;
+            double shipping = (subtotal > 0) ? 15000.00 : 0.00;
             double total = subtotal + shipping;
 
             session.setAttribute("cart", cart);
@@ -212,11 +205,7 @@ public class CartController {
         }
         return responseJson;
     }
-
-    // =========================================================================
-    // HÀM BỔ TRỢ (HELPERS)
-    // =========================================================================
-    private Cart getOrCreateCart(int userId, CartDAO cartDAO) throws SQLException {
+    private Cart getOrCreateCart(int userId) throws SQLException {
         Cart cart = cartDAO.getCartByUserId(userId);
         if (cart == null) {
             System.out.println("Cart not found for userId: " + userId + ". Creating new cart.");
@@ -248,9 +237,6 @@ public class CartController {
         }
     }
 
-    // =========================================================================
-    // 5. NẠP NHANH HTML GIỎ HÀNG (Thay thế hoàn toàn cho LoadCartServlet cũ)
-    // =========================================================================
     @GetMapping(value = "/loadCart", produces = "text/html;charset=UTF-8")
     @ResponseBody
     public String ajaxLoadCartHtml(HttpSession session) {
@@ -261,11 +247,13 @@ public class CartController {
 
         StringBuilder htmlBuilder = new StringBuilder();
 
-        try (Connection connection = DBConnectionPool.getDataSource().getConnection()) {
-            CartDAO cartDAO = new CartDAO(connection);
+        try {
             java.util.List<models.CartItem> list = cartDAO.getCartItems(cart.getCartId());
 
             for (models.CartItem ci : list) {
+                // Định dạng hiển thị dấu phân tách hàng nghìn cho tiền Việt
+                String formattedPrice = String.format("%,.0f", ci.getProduct().getPrice());
+
                 htmlBuilder.append("<div class=\"row cart-item mb-3\">\r\n")
                         .append("    <div class=\"col-md-3\">\r\n")
                         .append("        <img src=\"").append(session.getServletContext().getContextPath()).append("/image/product/").append(ci.getProduct().getPhoto()).append("\"\r\n")
@@ -286,7 +274,7 @@ public class CartController {
                         .append("        </div>\r\n")
                         .append("    </div>\r\n")
                         .append("    <div class=\"col-md-2 text-end\">\r\n")
-                        .append("        <p class=\"fw-bold\">$ ").append(ci.getProduct().getPrice()).append("</p>\r\n")
+                        .append("        <p class=\"fw-bold\">").append(formattedPrice).append(" VNĐ</p>\r\n")
                         .append("        <button class=\"btn btn-sm btn-outline-danger\" onclick=\"removeItem(").append(ci.getProduct().getId()).append(")\"> \r\n")
                         .append("            <i class=\"bi bi-trash\"></i>\r\n")
                         .append("        </button>\r\n")
@@ -294,12 +282,11 @@ public class CartController {
                         .append("</div>\r\n")
                         .append("<hr>");
             }
-        } catch (SQLException e) {
+        } catch (Exception e) {
             e.printStackTrace();
             return "<p class='text-danger text-center'>Lỗi tải dữ liệu giỏ hàng.</p>";
         }
 
         return htmlBuilder.toString();
     }
-
 }

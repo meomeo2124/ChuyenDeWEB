@@ -4,26 +4,38 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import javax.sql.DataSource;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
 
 import models.Cart;
 import models.CartItem;
 import models.Product;
 
+@Repository
 public class CartItemDAO {
-    private ProductDAO productDAO = new ProductDAO();
 
-    public CartItemDAO() {}
+    private final DataSource dataSource;
+    private final ProductDAO productDAO;
+
+    @Autowired
+    public CartItemDAO(DataSource dataSource, ProductDAO productDAO) {
+        this.dataSource = dataSource;
+        this.productDAO = productDAO;
+    }
 
     public boolean addCartItem(int cartId, int productId, int quantity) throws SQLException {
         if (cartId <= 0) {
             throw new SQLException("Invalid CartId: " + cartId);
         }
-        try (Connection connection = DBConnectionPool.getDataSource().getConnection();
-             PreparedStatement stmt = connection.prepareStatement("INSERT INTO `dbo.cartitem` (CartId, ProductId, Quantity) VALUES (?, ?, ?)")) {
+        String sql = "INSERT INTO `dbo.cartitem` (CartId, ProductId, Quantity) VALUES (?, ?, ?)";
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement stmt = connection.prepareStatement(sql)) {
             if (quantity <= 0) throw new IllegalArgumentException("Quantity must be greater than 0");
             Product product = productDAO.getProductById(productId);
             if (product == null || quantity > product.getStock()) throw new IllegalArgumentException("Not enough stock");
-            System.out.println("Adding item: CartId=" + cartId + ", ProductId=" + productId + ", Quantity=" + quantity);
+
             stmt.setInt(1, cartId);
             stmt.setInt(2, productId);
             stmt.setInt(3, quantity);
@@ -35,12 +47,12 @@ public class CartItemDAO {
         if (cart.getCartId() <= 0) {
             throw new SQLException("Invalid CartId: " + cart.getCartId());
         }
-        try (Connection connection = DBConnectionPool.getDataSource().getConnection();
-             PreparedStatement stmt = connection.prepareStatement("INSERT INTO `dbo.cartitem` (CartId, ProductId, Quantity) VALUES (?, ?, ?)")) {
+        String sql = "INSERT INTO `dbo.cartitem` (CartId, ProductId, Quantity) VALUES (?, ?, ?)";
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement stmt = connection.prepareStatement(sql)) {
             if (quantity <= 0 || quantity > product.getStock()) {
                 throw new IllegalArgumentException("Invalid quantity or not enough stock");
             }
-            System.out.println("Adding item: CartId=" + cart.getCartId() + ", ProductId=" + product.getId() + ", Quantity=" + quantity);
             stmt.setInt(1, cart.getCartId());
             stmt.setInt(2, product.getId());
             stmt.setInt(3, quantity);
@@ -57,9 +69,11 @@ public class CartItemDAO {
         if (cart.getCartId() <= 0) {
             throw new SQLException("Invalid CartId: " + cart.getCartId());
         }
-        try (Connection connection = DBConnectionPool.getDataSource().getConnection();
-             PreparedStatement stmtSelect = connection.prepareStatement("SELECT Quantity FROM `dbo.cartitem` WHERE CartId = ? AND ProductId = ?");
-             PreparedStatement stmtUpdate = connection.prepareStatement("UPDATE `dbo.cartitem` SET Quantity = ? WHERE CartId = ? AND ProductId = ?")) {
+        String sqlSelect = "SELECT Quantity FROM `dbo.cartitem` WHERE CartId = ? AND ProductId = ?";
+        String sqlUpdate = "UPDATE `dbo.cartitem` SET Quantity = ? WHERE CartId = ? AND ProductId = ?";
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement stmtSelect = connection.prepareStatement(sqlSelect);
+             PreparedStatement stmtUpdate = connection.prepareStatement(sqlUpdate)) {
             if (quantity < 0) throw new IllegalArgumentException("Quantity cannot be negative");
             stmtSelect.setInt(1, cart.getCartId());
             stmtSelect.setInt(2, product.getId());
@@ -82,8 +96,9 @@ public class CartItemDAO {
         if (cart.getCartId() <= 0) {
             throw new SQLException("Invalid CartId: " + cart.getCartId());
         }
-        try (Connection connection = DBConnectionPool.getDataSource().getConnection();
-             PreparedStatement stmt = connection.prepareStatement("SELECT Quantity FROM `dbo.cartitem` WHERE CartId = ? AND ProductId = ?")) {
+        String sql = "SELECT Quantity FROM `dbo.cartitem` WHERE CartId = ? AND ProductId = ?";
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setInt(1, cart.getCartId());
             stmt.setInt(2, product.getId());
             try (ResultSet rs = stmt.executeQuery()) {
