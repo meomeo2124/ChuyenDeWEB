@@ -57,7 +57,7 @@ public class AppConfig implements WebMvcConfigurer {
         em.setJpaVendorAdapter(vendorAdapter);
 
         Properties properties = new Properties();
-        properties.setProperty("hibernate.dialect", "org.hibernate.dialect.MySQLDialect");
+        properties.setProperty("hibernate.dialect", "org.hibernate.dialect.MySQL8Dialect");
         properties.setProperty("hibernate.show_sql", "true"); // In SQL ra console để dễ debug
         // properties.setProperty("hibernate.hbm2ddl.auto", "none"); // Giữ nguyên DB, không tự tạo bảng
         em.setJpaProperties(properties);
