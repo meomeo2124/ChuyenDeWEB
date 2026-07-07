@@ -1,14 +1,10 @@
 package models;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
+import java.util.List;
 
 @Entity
-@Table(name = "` coproduct_categories`")
+@Table(name = "`product_categories`")
 public class Category {
 
     @Id
@@ -17,16 +13,17 @@ public class Category {
     private int id;
 
     @Column(name = "category_name")
-    private String title; // Tên thuộc tính là title nhưng map với cột category_name
+    private String title;
 
     @Column(name = "description")
     private String description;
 
-    // Constructors
+    @OneToMany(mappedBy = "category", fetch = FetchType.LAZY)
+    private List<Product> products;
+
     public Category() {
     }
 
-    // Getter và Setter (Giữ nguyên như cũ của bạn)
     public int getId() { return id; }
     public void setId(int id) { this.id = id; }
 
@@ -35,4 +32,7 @@ public class Category {
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+
+    public List<Product> getProducts() { return products; }
+    public void setProducts(List<Product> products) { this.products = products; }
 }

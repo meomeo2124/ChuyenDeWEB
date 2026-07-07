@@ -63,8 +63,8 @@ public class OrderDAO {
             entityManager.merge(order);
         }
 
-        // Cập nhật trạng thái thanh toán đồng bộ
-        entityManager.createQuery("UPDATE Payment p SET p.status = :status WHERE p.orderId = :orderId")
+
+        entityManager.createNativeQuery("UPDATE payment SET status = :status WHERE order_id = :orderId")
                 .setParameter("status", status)
                 .setParameter("orderId", orderId)
                 .executeUpdate();

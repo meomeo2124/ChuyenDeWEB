@@ -13,17 +13,22 @@ public class OrderItem {
     @Column(name = "order_id")
     private int orderId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "order_id", insertable = false, updatable = false)
+    private Order order;
+
     @Column(name = "product_id")
     private int productId;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "product_id", insertable = false, updatable = false)
+    private Product product;
 
     @Column(name = "quantity")
     private int quantity;
 
     @Column(name = "price")
     private double price;
-
-    @Transient // Object product này dùng cho logic code Java, không lưu DB cột này
-    private Product product;
 
     @Transient
     private String productName;
@@ -35,15 +40,24 @@ public class OrderItem {
     public int getOrderId() { return orderId; }
     public void setOrderId(int orderId) { this.orderId = orderId; }
 
+    public Order getOrder() { return order; }
+    public void setOrder(Order order) { this.order = order; }
+
     public Product getProduct() { return product; }
     public void setProduct(Product product) {
         this.product = product;
         if(product != null) {
             this.productId = product.getId();
+            this.productName = product.getName();
         }
     }
 
-    public String getProductName() { return productName; }
+    public String getProductName() {
+        if (product != null) {
+            return product.getName();
+        }
+        return productName;
+    }
     public void setProductName(String productName) { this.productName = productName; }
     public int getQuantity() { return quantity; }
     public void setQuantity(int quantity) { this.quantity = quantity; }
