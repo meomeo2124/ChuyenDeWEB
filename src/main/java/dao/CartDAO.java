@@ -17,10 +17,8 @@ public class CartDAO {
     @PersistenceContext
     private EntityManager entityManager;
 
-    // Trong CartDAO.java
     public Cart getCartByUserId(int userId) {
         try {
-            // Thêm alias 'c' và đảm bảo 'Cart' là tên Class Entity
             return entityManager.createQuery("SELECT c FROM Cart c WHERE c.userId = :userId", Cart.class)
                     .setParameter("userId", userId)
                     .getSingleResult();
@@ -33,16 +31,22 @@ public class CartDAO {
         entityManager.persist(cart);
     }
 
+    // ✅ FIX: Dùng merge() thay vì delete+insert
     public void updateCart(Cart cart) {
-        // Xóa sạch CartItem cũ của Cart này
-        entityManager.createQuery("DELETE FROM CartItem ci WHERE ci.cartId = :cartId")
-                .setParameter("cartId", cart.getCartId())
-                .executeUpdate();
+        // 1. Xóa items không còn trong cart.getItems()
+        List<CartItem> dbItems = getCartItems(cart.getCartId());
+        for (CartItem dbItem : dbItems) {
+            if (!cart.getItems().containsKey(dbItem.getProductId())) {
+                entityManager.remove(entityManager.merge(dbItem));
+            }
+        }
 
-        // Thêm loạt CartItem mới vào database
-        for (CartItem item : cart.getItems().values()) {
-            item.setCartId(cart.getCartId());
-            entityManager.persist(item);
+        // 2. Merge items còn lại
+        if (cart.getItems() != null && !cart.getItems().isEmpty()) {
+            for (CartItem item : cart.getItems().values()) {
+                item.setCartId(cart.getCartId());
+                entityManager.merge(item);
+            }
         }
     }
 
