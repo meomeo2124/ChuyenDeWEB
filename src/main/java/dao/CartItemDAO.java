@@ -2,71 +2,82 @@ package dao;
 
 import models.Cart;
 import models.CartItem;
+import models.Product;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.NoResultException;
-import java.util.List;
 
 @Repository
 @Transactional
-public class CartDAO {
+public class CartItemDAO {
 
     @PersistenceContext
     private EntityManager entityManager;
 
-    public Cart getCartByUserId(int userId) {
+    public boolean addCartItem(int cartId, int productId, int quantity) {
+        if (cartId <= 0) return false;
+        if (quantity <= 0) throw new IllegalArgumentException("Quantity must be greater than 0");
+
+        Product product = entityManager.find(Product.class, productId);
+        if (product == null || quantity > product.getStock()) throw new IllegalArgumentException("Not enough stock");
+
+        CartItem item = new CartItem();
+        item.setCartId(cartId);
+        item.setProductId(productId);
+        item.setQuantity(quantity);
+
+        entityManager.persist(item);
+        return true;
+    }
+
+    public boolean addCartItem(Cart cart, Product product, int quantity) {
+        if (cart.getCartId() <= 0) return false;
+        if (quantity <= 0 || quantity > product.getStock()) {
+            throw new IllegalArgumentException("Invalid quantity or not enough stock");
+        }
+
+        CartItem item = new CartItem(product, quantity);
+        item.setCartId(cart.getCartId());
+        entityManager.persist(item);
+
+        cart.getItems().put(product.getId(), item);
+        return true;
+    }
+
+    public void setQuantity(Cart cart, Product product, int quantity) {
+        if (cart.getCartId() <= 0) return;
+        if (quantity < 0) throw new IllegalArgumentException("Quantity cannot be negative");
+        if (quantity > product.getStock()) throw new IllegalArgumentException("Not enough stock");
+
         try {
-            Cart cart = entityManager.createQuery("SELECT c FROM Cart c WHERE c.userId = :userId", Cart.class)
-                    .setParameter("userId", userId)
+            CartItem item = entityManager.createQuery("SELECT ci FROM CartItem ci WHERE ci.cartId = :cartId AND ci.productId = :productId", CartItem.class)
+                    .setParameter("cartId", cart.getCartId())
+                    .setParameter("productId", product.getId())
                     .getSingleResult();
 
-            List<CartItem> items = getCartItems(cart.getCartId());
-            for (CartItem item : items) {
-                cart.getItems().put(item.getProductId(), item);
+            item.setQuantity(quantity);
+            entityManager.merge(item);
+
+            if (cart.getItems().containsKey(product.getId())) {
+                cart.getItems().get(product.getId()).setQuantity(quantity);
             }
-            return cart;
         } catch (NoResultException e) {
-            return null;
+            // Không tìm thấy phần tử để cập nhật
         }
     }
 
-    public void createCart(Cart cart) {
-        entityManager.persist(cart);
-    }
-
-    public void updateCart(Cart cart) {
-        // Xóa sạch CartItem cũ của Cart này
-        entityManager.createQuery("DELETE FROM CartItem ci WHERE ci.cartId = :cartId")
-                .setParameter("cartId", cart.getCartId())
-                .executeUpdate();
-
-        // Thêm loạt CartItem mới vào database
-        for (CartItem item : cart.getItems().values()) {
-            item.setCartId(cart.getCartId());
-            entityManager.persist(item);
+    public int getQuantity(Cart cart, Product product) {
+        try {
+            CartItem item = entityManager.createQuery("SELECT ci FROM CartItem ci WHERE ci.cartId = :cartId AND ci.productId = :productId", CartItem.class)
+                    .setParameter("cartId", cart.getCartId())
+                    .setParameter("productId", product.getId())
+                    .getSingleResult();
+            return item.getQuantity();
+        } catch (NoResultException e) {
+            return 0;
         }
-    }
-
-    public List<CartItem> getCartItems(int cartId) {
-        return entityManager.createQuery("SELECT ci FROM CartItem ci WHERE ci.cartId = :cartId", CartItem.class)
-                .setParameter("cartId", cartId)
-                .getResultList();
-    }
-
-    public void clearCart(int cartId) {
-        entityManager.createQuery("DELETE FROM CartItem ci WHERE ci.cartId = :cartId")
-                .setParameter("cartId", cartId)
-                .executeUpdate();
-    }
-
-    public boolean removeCartItem(int cartId, int productId) {
-        int rowsDeleted = entityManager.createQuery("DELETE FROM CartItem ci WHERE ci.cartId = :cartId AND ci.productId = :productId")
-                .setParameter("cartId", cartId)
-                .setParameter("productId", productId)
-                .executeUpdate();
-        return rowsDeleted > 0;
     }
 }
