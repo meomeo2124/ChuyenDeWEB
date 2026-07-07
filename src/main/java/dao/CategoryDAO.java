@@ -9,15 +9,15 @@ import jakarta.persistence.PersistenceContext;
 import java.util.List;
 
 @Repository
-@Transactional // Bắt buộc phải có để Spring quản lý đóng/mở Transaction tự động
 public class CategoryDAO {
 
     @PersistenceContext
     private EntityManager entityManager;
 
     /**
-     * Lấy toàn bộ danh sách danh mục sản phẩm
+     * ✅ Lấy toàn bộ danh sách danh mục sản phẩm - Read-only
      */
+    @Transactional(readOnly = true)
     public List<Category> getAllCategories() {
         try {
             return entityManager.createQuery("SELECT c FROM Category c", Category.class).getResultList();
@@ -28,8 +28,9 @@ public class CategoryDAO {
     }
 
     /**
-     * Tìm kiếm danh mục theo ID (Khóa chính)
+     * ✅ Tìm kiếm danh mục theo ID - Read-only
      */
+    @Transactional(readOnly = true)
     public Category getCategoryById(int id) {
         try {
             return entityManager.find(Category.class, id);
@@ -40,11 +41,9 @@ public class CategoryDAO {
     }
 
     /**
-     * Thêm mới một danh mục
-     * Lưu ý: Do thuộc tính id đã được cấu hình tự động tăng (IDENTITY) ở class Entity,
-     * bạn không cần đoạn code tính toán SELECT MAX(id) + 1 như JDBC cũ nữa.
-     * Hibernate sẽ tự động xử lý việc này khi insert vào DB.
+     * ✅ Thêm mới một danh mục - Read-Write
      */
+    @Transactional  // hoặc @Transactional(readOnly = false)
     public boolean addCategory(Category category) {
         try {
             entityManager.persist(category);
@@ -56,8 +55,9 @@ public class CategoryDAO {
     }
 
     /**
-     * Cập nhật thông tin danh mục
+     * ✅ Cập nhật thông tin danh mục - Read-Write
      */
+    @Transactional
     public boolean updateCategory(Category category) {
         try {
             entityManager.merge(category);
@@ -69,8 +69,9 @@ public class CategoryDAO {
     }
 
     /**
-     * Xóa danh mục theo ID
+     * ✅ Xóa danh mục theo ID - Read-Write
      */
+    @Transactional
     public boolean deleteCategory(int id) {
         try {
             Category category = entityManager.find(Category.class, id);
@@ -86,8 +87,9 @@ public class CategoryDAO {
     }
 
     /**
-     * Đếm tổng số lượng danh mục đang có trong cơ sở dữ liệu
+     * ✅ Đếm tổng số lượng danh mục - Read-only
      */
+    @Transactional(readOnly = true)
     public int getTotalCategories() {
         try {
             Long count = entityManager.createQuery("SELECT COUNT(c) FROM Category c", Long.class).getSingleResult();
