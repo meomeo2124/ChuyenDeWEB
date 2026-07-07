@@ -1,132 +1,100 @@
 package dao;
 
-import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
-import javax.sql.DataSource;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Repository;
 import models.Category;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
+
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import java.util.List;
 
 @Repository
+@Transactional // Bắt buộc phải có để Spring quản lý đóng/mở Transaction tự động
 public class CategoryDAO {
 
-    private final DataSource dataSource;
+    @PersistenceContext
+    private EntityManager entityManager;
 
-    @Autowired
-    public CategoryDAO(DataSource dataSource) {
-        this.dataSource = dataSource;
-    }
-
+    /**
+     * Lấy toàn bộ danh sách danh mục sản phẩm
+     */
     public List<Category> getAllCategories() {
-        List<Category> categoriesList = new ArrayList<>();
-        String query = "SELECT * FROM `dbo.product_categories`";
-        try (Connection conn = dataSource.getConnection();
-             Statement statement = conn.createStatement();
-             ResultSet rs = statement.executeQuery(query)) {
-            while (rs.next()) {
-                Category category = new Category();
-                category.setId(rs.getInt("id"));
-                category.setTitle(rs.getString("category_name"));
-                category.setDescription(rs.getString("description"));
-                categoriesList.add(category);
-            }
-        } catch (SQLException e) {
+        try {
+            return entityManager.createQuery("SELECT c FROM Category c", Category.class).getResultList();
+        } catch (Exception e) {
             e.printStackTrace();
+            return null;
         }
-        return categoriesList;
     }
 
+    /**
+     * Tìm kiếm danh mục theo ID (Khóa chính)
+     */
+    public Category getCategoryById(int id) {
+        try {
+            return entityManager.find(Category.class, id);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    /**
+     * Thêm mới một danh mục
+     * Lưu ý: Do thuộc tính id đã được cấu hình tự động tăng (IDENTITY) ở class Entity,
+     * bạn không cần đoạn code tính toán SELECT MAX(id) + 1 như JDBC cũ nữa.
+     * Hibernate sẽ tự động xử lý việc này khi insert vào DB.
+     */
     public boolean addCategory(Category category) {
-        String queryMaxId = "SELECT MAX(id) FROM `dbo.product_categories`";
-        int newId = 0;
-
-        try (Connection conn = dataSource.getConnection();
-             Statement statement = conn.createStatement();
-             ResultSet rs = statement.executeQuery(queryMaxId)) {
-
-            if (rs.next()) {
-                newId = rs.getInt(1) + 1;
-            }
-        } catch (SQLException e) {
+        try {
+            entityManager.persist(category);
+            return true;
+        } catch (Exception e) {
             e.printStackTrace();
             return false;
         }
-
-        String queryInsert = "INSERT INTO `dbo.product_categories` (id, category_name, description) VALUES (?, ?, ?)";
-
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement statement = conn.prepareStatement(queryInsert)) {
-
-            statement.setInt(1, newId);
-            statement.setString(2, category.getTitle());
-            statement.setString(3, category.getDescription());
-
-            return statement.executeUpdate() > 0;
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return false;
     }
 
+    /**
+     * Cập nhật thông tin danh mục
+     */
     public boolean updateCategory(Category category) {
-        String query = "UPDATE `dbo.product_categories` SET category_name = ?, description = ? WHERE id = ?";
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(query)) {
-            stmt.setString(1, category.getTitle());
-            stmt.setString(2, category.getDescription());
-            stmt.setInt(3, category.getId());
-            return stmt.executeUpdate() > 0;
-        } catch (SQLException e) {
+        try {
+            entityManager.merge(category);
+            return true;
+        } catch (Exception e) {
             e.printStackTrace();
+            return false;
         }
-        return false;
     }
 
+    /**
+     * Xóa danh mục theo ID
+     */
     public boolean deleteCategory(int id) {
-        String query = "DELETE FROM `dbo.product_categories` WHERE id = ?";
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(query)) {
-            stmt.setInt(1, id);
-            return stmt.executeUpdate() > 0;
-        } catch (SQLException e) {
+        try {
+            Category category = entityManager.find(Category.class, id);
+            if (category != null) {
+                entityManager.remove(category);
+                return true;
+            }
+            return false;
+        } catch (Exception e) {
             e.printStackTrace();
+            return false;
         }
-        return false;
     }
 
+    /**
+     * Đếm tổng số lượng danh mục đang có trong cơ sở dữ liệu
+     */
     public int getTotalCategories() {
-        String query = "SELECT COUNT(*) FROM `dbo.product_categories`";
-        try (Connection conn = dataSource.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(query)) {
-            if (rs.next()) {
-                return rs.getInt(1);
-            }
-        } catch (SQLException e) {
+        try {
+            Long count = entityManager.createQuery("SELECT COUNT(c) FROM Category c", Long.class).getSingleResult();
+            return count != null ? count.intValue() : 0;
+        } catch (Exception e) {
             e.printStackTrace();
+            return 0;
         }
-        return 0;
-    }
-
-    public Category getCategoryById(int id) {
-        Category category = null;
-        String query = "SELECT * FROM `dbo.product_categories` WHERE id = ?";
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(query)) {
-            stmt.setInt(1, id);
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    category = new Category();
-                    category.setId(rs.getInt("id"));
-                    category.setTitle(rs.getString("category_name"));
-                    category.setDescription(rs.getString("description"));
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return category;
     }
 }

@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -59,7 +58,7 @@ public class CartController {
                 model.addAttribute("errorMessage", "Failed to load cart.");
             }
 
-        } catch (SQLException e) {
+        } catch (Exception e) {
             e.printStackTrace();
             model.addAttribute("errorMessage", "Error processing request.");
         }
@@ -203,7 +202,7 @@ public class CartController {
         }
         return responseJson;
     }
-    private Cart getOrCreateCart(int userId) throws SQLException {
+    private Cart getOrCreateCart(int userId) throws Exception {
         Cart cart = cartDAO.getCartByUserId(userId);
         if (cart == null) {
             System.out.println("Cart not found for userId: " + userId + ". Creating new cart.");
@@ -211,7 +210,7 @@ public class CartController {
             cartDAO.createCart(cart);
             cart = cartDAO.getCartByUserId(userId);
             if (cart == null || cart.getCartId() <= 0) {
-                throw new SQLException("Failed to create cart for userId: " + userId);
+                throw new Exception("Failed to create cart for userId: " + userId);
             }
         }
         return cart;
