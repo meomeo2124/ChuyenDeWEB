@@ -108,6 +108,7 @@ public class PaymentController {
                     if (orderId > 0) {
                         orderDAO.saveOrderDetails(orderId, cart.getItems());
 
+                        // 🌟 ĐỒNG BỘ: Clear giỏ hàng khi chọn thanh toán bằng VietQR
                         cart.clearCart();
                         session.setAttribute("cart", cart);
 
@@ -193,16 +194,19 @@ public class PaymentController {
                     }
                 }
 
-                // Luồng xử lý cho TIỀN MẶT / Các phương thức offline
+                // 🌟 ĐÃ FIX: Xử lý đồng bộ dứt điểm cho TIỀN MẶT / Cash On Delivery
                 int orderId = orderDAO.createOrder(user.getId(), totalPrice, paymentMethod);
                 if (orderId > 0) {
                     orderDAO.saveOrderDetails(orderId, cart.getItems());
 
+                    // Thực hiện xóa sạch giỏ hàng trong Session ngay lập tức sau khi đặt mua bằng Tiền Mặt
                     cart.clearCart();
                     session.setAttribute("cart", cart);
+
+                    // Điều hướng thẳng tới Endpoint thành công hiển thị hóa đơn
                     return "redirect:/secure/order-success?orderId=" + orderId;
                 } else {
-                    String error = URLEncoder.encode("Thanh toán thất bại", StandardCharsets.UTF_8);
+                    String error = URLEncoder.encode("Thanh toán tiền mặt thất bại", StandardCharsets.UTF_8);
                     return "redirect:/secure/payment?error=" + error;
                 }
             } catch (Exception e) {
@@ -221,7 +225,8 @@ public class PaymentController {
         try {
             Order order = orderDAO.getOrderById(orderId);
             model.addAttribute("order", order);
-            return "secure/invoice";
+            model.addAttribute("msg", "Đặt hàng thành công! Đơn hàng của bạn đang được xử lý.");
+            return "secure/invoice"; // Điều hướng thẳng tới file hóa đơn
         } catch (Exception e) {
             return "redirect:/secure/cart?error=" + URLEncoder.encode("Lỗi hiển thị hóa đơn.", StandardCharsets.UTF_8);
         }
@@ -364,6 +369,7 @@ public class PaymentController {
             PdfDocument pdf = new PdfDocument(writer);
             Document document = new Document(pdf);
 
+
             PdfFont font = PdfFontFactory.createFont("C:/Windows/Fonts/times.ttf", "Identity-H", PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
             document.setFont(font);
 
@@ -387,7 +393,6 @@ public class PaymentController {
             Table table = new Table(new float[]{4, 1, 2});
             table.setWidth(com.itextpdf.layout.properties.UnitValue.createPercentValue(100));
 
-            // Định dạng tiêu đề bảng (Header)
             table.addHeaderCell(new Cell().add(new Paragraph("Tên đồ uống / Topping").setBold().setFont(font)).setBackgroundColor(com.itextpdf.kernel.colors.ColorConstants.LIGHT_GRAY));
             table.addHeaderCell(new Cell().add(new Paragraph("SL").setBold().setFont(font).setTextAlignment(com.itextpdf.layout.properties.TextAlignment.CENTER)).setBackgroundColor(com.itextpdf.kernel.colors.ColorConstants.LIGHT_GRAY));
             table.addHeaderCell(new Cell().add(new Paragraph("Thành tiền").setBold().setFont(font).setTextAlignment(com.itextpdf.layout.properties.TextAlignment.RIGHT)).setBackgroundColor(com.itextpdf.kernel.colors.ColorConstants.LIGHT_GRAY));

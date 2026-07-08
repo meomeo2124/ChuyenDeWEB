@@ -8,7 +8,8 @@ public class Product {
     private double price; // Giá sản phẩm
     private int stock; // 
     private Category category; // Đối tượng Category ánh xạ từ category_id
-
+    private int isFlashSale;          // 1 là bật, 0 là tắt
+    private int flashSaleDiscount;
     public Product() {
     }
 
@@ -79,5 +80,20 @@ public class Product {
 
     public void setCategory(Category category) {
         this.category = category;
+    }
+    public int getIsFlashSale() {
+        return isFlashSale;
+    }
+
+    public void setIsFlashSale(int isFlashSale) {
+        this.isFlashSale = isFlashSale;
+    }
+
+    public int getFlashSaleDiscount() {
+        return flashSaleDiscount;
+    }
+
+    public void setFlashSaleDiscount(int flashSaleDiscount) {
+        this.flashSaleDiscount = flashSaleDiscount;
     }
 }

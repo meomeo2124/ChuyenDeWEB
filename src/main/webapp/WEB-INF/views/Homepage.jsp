@@ -119,7 +119,94 @@
         <p class="lead text-white-50 fs-6 m-0 mt-1">"I never laugh until I have a Drink"</p>
     </div>
 </header>
+<!-- KHỐI MUA NHANH FLASH SALE GIỜ VÀNG GIÁ SỐC -->
+<div class="container mt-4">
+    <div class="card p-3" style="border: 2px solid #6c5ce7; border-radius: 20px; background: #fff; box-shadow: 0 0 15px rgba(108, 92, 231, 0.15);">
+        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center mb-3 px-2 gap-2">
+            <div class="d-flex align-items-center">
+                <span class="badge bg-danger me-2 px-3 py-2 text-uppercase fw-bold animate-pulse" style="font-size: 12px; border-radius: 30px;">
+                    <i class="bi bi-lightning-charge-fill me-1"></i>Flash Sale
+                </span>
+                <h5 class="fw-bold m-0 text-dark">Khung Giờ Vàng Giá Sốc</h5>
+            </div>
+            <!-- Đồng hồ đếm ngược -->
+            <div class="d-flex align-items-center gap-2 bg-light px-3 py-1.5 rounded-pill border">
+                <span class="text-secondary small fw-medium">Kết thúc trong:</span>
+                <div id="countdown-timer" class="fw-bold text-danger fs-5 font-monospace">00:00:00</div>
+            </div>
+        </div>
 
+        <!-- Danh sách 3 món signature giảm giá mạnh -->
+        <div class="row g-3">
+            <c:forEach var="product" items="${productList}" varStatus="status">
+                <c:if test="${status.index < 3}">
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-center p-2 rounded-3 border bg-light position-relative h-100">
+                            <!-- Nhãn giảm giá bọc góc ảnh -->
+                            <span class="position-absolute top-0 start-0 badge bg-danger m-2" style="border-radius: 8px;">-35%</span>
+                            <img src="${pageContext.request.contextPath}/image/product/${not empty product.photo ? product.photo : 'no-sample.png'}"
+                                 class="rounded-3 border" style="width: 75px; height: 75px; object-fit: cover;">
+                            <div class="ms-3 flex-grow-1">
+                                <h6 class="fw-bold text-dark mb-1 text-truncate" style="max-width: 150px;"><c:out value="${product.name}"/></h6>
+                                <div class="small mb-2">
+                                    <!-- Giá flash sale -->
+                                    <span class="fw-bold text-danger fs-6"><fmt:formatNumber value="${product.price * 0.65}" pattern="#,###"/> đ</span>
+                                    <span class="text-muted text-decoration-line-through ms-1" style="font-size: 11px;"><fmt:formatNumber value="${product.price}" pattern="#,###"/>đ</span>
+                                </div>
+                                <form action="${pageContext.request.contextPath}/addToCart" method="POST" style="margin:0;">
+                                    <input type="hidden" name="productId" value="${product.id}">
+                                    <input type="hidden" name="inputQuantity" value="1">
+                                    <button type="submit" class="btn btn-sm btn-danger px-3 w-100 flash-sale-btn" style="border-radius: 10px; font-weight:600; font-size:12px;">Mua ngay</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </c:if>
+            </c:forEach>
+        </div>
+    </div>
+</div>
+
+<!-- SCRIPT JAVASCRIPT ĐIỀU HƯỚNG TỰ ĐỘNG KHÓA KHI HẾT GIỜ VÀNG -->
+<script>
+    function startCountdown() {
+        // Thiết lập đếm ngược thời gian giả định kết thúc vào cuối ngày (hoặc setup giờ cố định tùy bạn)
+        const now = new Date();
+        const targetTime = new Date();
+        targetTime.setHours(23, 59, 59, 0); // Ví dụ tự động đếm ngược đến hết ngày hôm nay
+
+        let duration = Math.floor((targetTime - now) / 1000);
+
+        const timerDisplay = document.getElementById('countdown-timer');
+        const flashBtns = document.querySelectorAll('.flash-sale-btn');
+
+        const interval = setInterval(() => {
+            if (duration <= 0) {
+                clearInterval(interval);
+                timerDisplay.innerText = "00:00:00";
+                // Tự động vô hiệu hóa nút mua nhanh khi hết khung giờ vàng
+                flashBtns.forEach(btn => {
+                    btn.disabled = true;
+                    btn.classList.replace('btn-danger', 'btn-secondary');
+                    btn.innerText = "Đã hết giờ";
+                });
+                return;
+            }
+
+            let hours = Math.floor(duration / 3600);
+            let minutes = Math.floor((duration % 3600) / 60);
+            let seconds = duration % 60;
+
+            hours = hours < 10 ? "0" + hours : hours;
+            minutes = minutes < 10 ? "0" + minutes : minutes;
+            seconds = seconds < 10 ? "0" + seconds : seconds;
+
+            timerDisplay.innerText = hours + ":" + minutes + ":" + seconds;
+            duration--;
+        }, 1000);
+    }
+    document.addEventListener("DOMContentLoaded", startCountdown);
+</script>
 <input type="hidden" id="contextPath" value="${pageContext.request.contextPath}">
 
 <section class="py-5">

@@ -100,8 +100,11 @@
 		<nav class="col-md-3 col-lg-2 d-none d-md-block admin-nav">
 			<ul>
 				<li><a href="${pageContext.request.contextPath}/admin/dashboard"><span class="icon"><i class="bi bi-speedometer2"></i></span><span class="text">Tổng quan</span></a></li>
-				<li><a href="${pageContext.request.contextPath}/admin/product/manage" class="active"><span class="icon"><i class="bi bi-box-seam"></i></span><span class="text">Sản phẩm</span></a></li>
-				<li><a href="${pageContext.request.contextPath}/admin/user/manage"><span class="icon"><i class="bi bi-people"></i></span><span class="text">Người dùng</span></a></li>
+				<li><a href="${pageContext.request.contextPath}/admin/product/manage"><span class="icon"><i class="bi bi-box-seam"></i></span><span class="text">Sản phẩm</span></a></li>
+
+				<li><a href="${pageContext.request.contextPath}/admin/product/reviews"><span class="icon"><i class="bi bi-chat-heart"></i></span><span class="text">Quản lý đánh giá</span></a></li>
+
+				<li><a href="${pageContext.request.contextPath}/admin/user/manage" class="active"><span class="icon"><i class="bi bi-people"></i></span><span class="text">Người dùng</span></a></li>
 				<li><a href="${pageContext.request.contextPath}/admin/category/manage"><span class="icon"><i class="bi bi-tags"></i></span><span class="text">Danh mục</span></a></li>
 				<li><a href="${pageContext.request.contextPath}/admin/order/manage"><span class="icon"><i class="bi bi-receipt"></i></span><span class="text">Đơn hàng</span></a></li>
 				<li><a href="${pageContext.request.contextPath}/admin/statistics"><span class="icon"><i class="bi bi-bar-chart-line"></i></span><span class="text">Thống kê doanh thu</span></a></li>
