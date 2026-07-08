@@ -77,8 +77,14 @@ public class AdminProductController {
                                 @RequestParam("description") String description,
                                 @RequestParam("price") double price,
                                 @RequestParam(value = "stock", defaultValue = "0") int stock,
+                                @RequestParam("category_id") int categoryId, // 1. THÊM DÒNG NÀY
                                 @RequestParam("photo") MultipartFile filePart) {
         try {
+            // 2. THÊM ĐOẠN CHECK VÀ LẤY CATEGORY TỪ DB
+            Category category = categoryDAO.getCategoryById(categoryId);
+            if (category == null) {
+                return "redirect:/admin/product/manage?error=" + URLEncoder.encode("Danh mục không hợp lệ.", StandardCharsets.UTF_8);
+            }
             String finalFileName = "no-sample.png";
             String imagePath = servletContext.getRealPath("") + File.separator + "image" + File.separator + "product";
 
@@ -103,7 +109,7 @@ public class AdminProductController {
             product.setPhoto(finalFileName);
             product.setPrice(price);
             product.setStock(stock);
-
+            product.setCategory(category);
             productDAO.addProduct(product);
             return "redirect:/admin/product/manage?success=" + URLEncoder.encode("Thêm sản phẩm mới thành công!", StandardCharsets.UTF_8);
         } catch (Exception e) {

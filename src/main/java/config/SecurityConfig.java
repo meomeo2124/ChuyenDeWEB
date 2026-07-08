@@ -31,7 +31,7 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        // ĐÃ SỬA: Bọc các đường dẫn bằng AntPathRequestMatcher
+                        // SỬ DỤNG hasRole THAY VÌ hasAuthority
                         .requestMatchers(new AntPathRequestMatcher("/admin/**")).hasRole("ADMIN")
                         .requestMatchers(new AntPathRequestMatcher("/secure/**")).hasAnyRole("USER", "ADMIN")
                         .anyRequest().permitAll()
@@ -48,6 +48,7 @@ public class SecurityConfig {
                             session.setAttribute("userId", user.getId());
                             session.setAttribute("img", user.getImg());
 
+                            // Nếu là Admin, đưa thẳng vào Dashboard, ngược lại vào trang chủ
                             if (user.getIsAdmin()) {
                                 response.sendRedirect(request.getContextPath() + "/admin/dashboard");
                             } else {

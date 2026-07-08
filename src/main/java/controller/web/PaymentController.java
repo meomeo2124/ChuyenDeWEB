@@ -41,8 +41,6 @@ public class PaymentController {
     private static final Logger LOGGER = Logger.getLogger(PaymentController.class.getName());
     private final OrderDAO orderDAO;
 
-    // Đã xóa bỏ tiêm DataSource vì chúng ta hoàn toàn dùng JPA
-
     @Autowired
     public PaymentController(OrderDAO orderDAO) {
         this.orderDAO = orderDAO;
@@ -104,7 +102,6 @@ public class PaymentController {
                     if (orderId > 0) {
                         orderDAO.saveOrderDetails(orderId, cart.getItems());
 
-                        // 🌟 ĐỒNG BỘ: Clear giỏ hàng khi chọn thanh toán bằng VietQR
                         cart.clearCart();
                         session.setAttribute("cart", cart);
 

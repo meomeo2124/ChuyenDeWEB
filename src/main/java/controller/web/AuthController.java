@@ -33,17 +33,19 @@ public class AuthController {
     // 1. Hiển thị trang Login
     @GetMapping("/login")
     public String showLoginPage(@RequestParam(value = "error", required = false) String error,
+                                @RequestParam(value = "logout", required = false) String logout,
                                 @RequestParam(value = "msg", required = false) String msg,
                                 Model model) {
-        if ("google_token_invalid".equals(error)) {
-            model.addAttribute("message", "Tài khoản Google xác thực không hợp lệ.");
-        } else if ("missing_credentials".equals(error)) {
-            model.addAttribute("message", "Vui lòng nhập đầy đủ thông tin đăng nhập.");
-        } else if (msg != null) {
+        if (error != null) {
+            model.addAttribute("message", "Sai email hoặc mật khẩu!");
+        }
+        if (logout != null) {
+            model.addAttribute("message", "Đã đăng xuất thành công.");
+        }
+        if (msg != null) {
             model.addAttribute("message", msg);
         }
-        // Hướng về file views/Login.jsp
-        return "Login";
+        return "Login"; // Trả về view Login.jsp
     }
 
     @RequestMapping(value = "/login", method = {RequestMethod.HEAD})

@@ -109,20 +109,19 @@ public class UserDAO {
     }
 
     /**
-     * ✅ Tìm user theo email
+     *Tìm user theo email
      */
     @Transactional(readOnly = true)
     public User findByEmail(String email) {
         if (email == null || email.trim().isEmpty()) {
             throw new ValidationException("email", email, "Email cannot be empty");
         }
-
         try {
             return entityManager.createQuery("SELECT u FROM User u WHERE u.email = :email", User.class)
                     .setParameter("email", email)
                     .getSingleResult();
         } catch (NoResultException e) {
-            throw new ResourceNotFoundException("User", "email", email);
+            return null; // SỬA Ở ĐÂY: Trả về null nếu không tìm thấy email, không throw Exception
         } catch (Exception e) {
             throw new DatabaseException("SELECT", "User", "Failed to find user by email", e);
         }
