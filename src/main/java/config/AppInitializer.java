@@ -13,6 +13,8 @@ public class AppInitializer extends AbstractAnnotationConfigDispatcherServletIni
 
     @Override
     protected Class<?>[] getServletConfigClasses() {
+        // Chỉ cần nạp AppConfig là đủ, vì trong AppConfig đã có @ComponentScan("config")
+        // nó sẽ tự động tìm thấy SecurityConfig
         return new Class[]{AppConfig.class};
     }
 

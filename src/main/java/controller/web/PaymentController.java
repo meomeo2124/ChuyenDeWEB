@@ -27,13 +27,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
-import javax.sql.DataSource;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.logging.Logger;
@@ -44,12 +40,12 @@ public class PaymentController {
 
     private static final Logger LOGGER = Logger.getLogger(PaymentController.class.getName());
     private final OrderDAO orderDAO;
-    private final DataSource dataSource;
+
+    // Đã xóa bỏ tiêm DataSource vì chúng ta hoàn toàn dùng JPA
 
     @Autowired
-    public PaymentController(OrderDAO orderDAO, DataSource dataSource) {
+    public PaymentController(OrderDAO orderDAO) {
         this.orderDAO = orderDAO;
-        this.dataSource = dataSource;
     }
 
     @GetMapping("/payment")
@@ -253,7 +249,6 @@ public class PaymentController {
     public String vnpayCallback(HttpServletRequest request, HttpSession session, Model model) {
         String vnp_ResponseCode = request.getParameter("vnp_ResponseCode");
         String vnp_TxnRef = request.getParameter("vnp_TxnRef");
-        String vnp_Amount = request.getParameter("vnp_Amount");
         String vnp_SecureHashReceived = request.getParameter("vnp_SecureHash");
 
         if (vnp_TxnRef == null || vnp_TxnRef.isEmpty()) {
@@ -291,19 +286,11 @@ public class PaymentController {
         }
 
         int orderId = Integer.parseInt(vnp_TxnRef);
-        double amountReal = Double.parseDouble(vnp_Amount) / 100.0;
 
-        try (Connection connection = dataSource.getConnection()) {
-            String paymentStatus = "FAILED";
-
+        try {
             if ("00".equals(vnp_ResponseCode)) {
-                paymentStatus = "PAID";
-
-                String updateOrderSql = "UPDATE `dbo.orders` SET status = 'PAID' WHERE id = ?";
-                try (PreparedStatement ps = connection.prepareStatement(updateOrderSql)) {
-                    ps.setInt(1, orderId);
-                    ps.executeUpdate();
-                }
+                // Đã thay thế Connection và Prepared Statement bằng JPA
+                orderDAO.updateOrderStatusAndPayment(orderId, "PAID");
 
                 Cart cart = (Cart) session.getAttribute("cart");
                 if (cart != null) {
@@ -312,32 +299,13 @@ public class PaymentController {
                 }
 
                 model.addAttribute("msg", "Thanh toan qua cong VNPay thanh cong!");
-            } else {
-                paymentStatus = "CANCELLED";
-                String updateOrderSql = "UPDATE `dbo.orders` SET status = 'CANCELLED' WHERE id = ?";
-                try (PreparedStatement ps = connection.prepareStatement(updateOrderSql)) {
-                    ps.setInt(1, orderId);
-                    ps.executeUpdate();
-                }
-            }
-
-            String insertPaymentSql = "INSERT INTO `dbo.payment` (order_id, amount, payment_method, status) VALUES (?, ?, ?, ?)";
-            try (PreparedStatement psPayment = connection.prepareStatement(insertPaymentSql)) {
-                psPayment.setInt(1, orderId);
-                psPayment.setDouble(2, amountReal);
-                psPayment.setString(3, "VNPAY");
-                psPayment.setString(4, paymentStatus);
-                psPayment.executeUpdate();
-            }
-
-            if ("PAID".equals(paymentStatus)) {
                 Order order = orderDAO.getOrderById(orderId);
                 model.addAttribute("order", order);
                 return "secure/invoice";
             } else {
+                orderDAO.updateOrderStatusAndPayment(orderId, "CANCELLED");
                 return "redirect:/secure/payment?error=" + URLEncoder.encode("Giao dich thanh toan that bai.", StandardCharsets.UTF_8);
             }
-
         } catch (Exception e) {
             LOGGER.severe("VNPay callback error: " + e.getMessage());
             return "redirect:/secure/payment?error=" + URLEncoder.encode("Loi xu ly giao dich co so du lieu.", StandardCharsets.UTF_8);
@@ -420,7 +388,8 @@ public class PaymentController {
 
             document.close();
 
-        } catch (SQLException | NumberFormatException e) {
+            // Đã sửa lại thành catch (Exception e) để bắt mọi lỗi phát sinh thay vì SQLException
+        } catch (Exception e) {
             LOGGER.severe("PDF generation error: " + e.getMessage());
             response.sendRedirect(session.getServletContext().getContextPath() + "/secure/payment?error=Loi he thong hoa don");
         }

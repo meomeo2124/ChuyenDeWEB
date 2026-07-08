@@ -1,5 +1,6 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<%@ taglib prefix="form" uri="http://www.springframework.org/tags/form" %>
 <!DOCTYPE html>
 <html>
 <head>
@@ -32,75 +33,88 @@
               </div>
             </div>
 
-            <%-- ĐÃ SỬA: Đổi từ Rmessage thành error để khớp với Controller --%>
-            <c:if test="${not empty error}">
-              <div class="alert alert-danger text-center" role="alert">
-                  ${error}
-              </div>
-            </c:if>
+            <%-- Hiển thị lỗi tổng quan hệ thống nếu có --%>
+            <form:errors element="div" cssClass="alert alert-danger text-center" />
 
-            <form action="${pageContext.request.contextPath}/register" method="post">
+            <%-- Khởi tạo Spring Form liên kết với Object userDTO --%>
+            <form:form action="${pageContext.request.contextPath}/register" method="post" modelAttribute="userDTO">
               <div class="row gy-3 overflow-hidden">
+
                 <div class="col-12">
                   <div class="form-floating mb-3">
-                    <input type="text" class="form-control" name="username" id="username" placeholder="Username" required>
+                    <form:input path="username" class="form-control" placeholder="Username" />
                     <label class="form-label">Username</label>
+                    <form:errors path="username" cssClass="text-danger small" />
                   </div>
                 </div>
+
                 <div class="col-12">
                   <div class="form-floating mb-3">
-                    <input type="email" class="form-control" name="email" id="email" placeholder="name@example.com" required>
+                    <form:input path="email" type="email" class="form-control" id="email" placeholder="name@example.com" />
                     <label class="form-label">Email</label>
+                      <%-- Lỗi từ Backend Validation --%>
+                    <form:errors path="email" cssClass="text-danger small d-block" />
+                      <%-- Thông báo từ AJAX Frontend --%>
+                    <div id="emailAjaxMsg" class="small mt-1 fw-bold"></div>
                   </div>
                 </div>
 
-                <%-- ĐÃ BỔ SUNG: Ô nhập số điện thoại --%>
                 <div class="col-12">
                   <div class="form-floating mb-3">
-                    <input type="text" class="form-control" name="phone_number" id="phone_number" placeholder="Phone Number" required>
+                    <form:input path="phone_number" class="form-control" placeholder="Phone Number" />
                     <label class="form-label">Phone Number</label>
+                    <form:errors path="phone_number" cssClass="text-danger small" />
                   </div>
                 </div>
 
-                <%-- ĐÃ BỔ SUNG: Ô nhập địa chỉ --%>
                 <div class="col-12">
                   <div class="form-floating mb-3">
-                    <input type="text" class="form-control" name="address" id="address" placeholder="Address" required>
+                    <form:input path="address" class="form-control" placeholder="Address" />
                     <label class="form-label">Address</label>
+                    <form:errors path="address" cssClass="text-danger small" />
                   </div>
                 </div>
 
                 <div class="col-12">
                   <div class="form-floating mb-3">
-                    <input type="password" class="form-control" name="password" id="password" placeholder="Password" required>
+                    <form:password path="password" class="form-control" placeholder="Password" />
                     <label class="form-label">Password</label>
+                    <form:errors path="password" cssClass="text-danger small" />
                   </div>
                 </div>
+
                 <div class="col-12">
                   <div class="form-floating mb-3">
-                    <input type="password" class="form-control" name="repass" id="repass" placeholder="Confirm Password" required>
+                    <form:password path="repass" class="form-control" placeholder="Confirm Password" />
                     <label class="form-label">Confirm Password</label>
+                    <form:errors path="repass" cssClass="text-danger small" />
                   </div>
                 </div>
+
                 <div class="col-12">
                   <div class="form-check">
-                    <input class="form-check-input" type="checkbox" value="" name="iAgree" id="iAgree" required>
+                    <form:checkbox path="iAgree" cssClass="form-check-input" id="iAgree" />
                     <label class="form-check-label text-secondary" for="iAgree">
                       I agree to the <a href="#!" class="link-primary text-decoration-none">terms and conditions</a>
                     </label>
                   </div>
+                  <form:errors path="iAgree" cssClass="text-danger small d-block" />
                 </div>
+
                 <div class="col-12">
                   <div class="d-grid">
                     <button class="btn btn-primary btn-lg" type="submit">Sign up</button>
                   </div>
                 </div>
               </div>
-            </form>
+            </form:form>
+
             <div class="row">
               <div class="col-12">
                 <hr class="mt-5 mb-4 border-secondary-subtle">
-                <p class="m-0 text-secondary text-center">Already have an account? <a href="${pageContext.request.contextPath}/login" class="link-primary text-decoration-none">Sign in</a></p>
+                <p class="m-0 text-secondary text-center">Already have an account?
+                  <a href="${pageContext.request.contextPath}/login" class="link-primary text-decoration-none">Sign in</a>
+                </p>
               </div>
             </div>
           </div>
@@ -111,6 +125,48 @@
 </section>
 
 <%@ include file="/template/includes/footer.jsp"%>
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    const emailInput = document.getElementById("email");
+    const emailMsg = document.getElementById("emailAjaxMsg");
+
+    // Lắng nghe sự kiện 'blur' (khi người dùng click chuột ra ngoài ô nhập email)
+    emailInput.addEventListener("blur", function() {
+      const emailValue = emailInput.value.trim();
+
+      // Nếu có nhập liệu thì mới gọi AJAX
+      if (emailValue !== "") {
+        // Hiển thị trạng thái đang kiểm tra
+        emailMsg.innerHTML = "<span class='text-secondary'><i class='bi bi-hourglass-split'></i> Đang kiểm tra...</span>";
+        emailInput.classList.remove("is-invalid", "is-valid");
+
+        // Gọi API bằng công nghệ Fetch (AJAX)
+        fetch('${pageContext.request.contextPath}/api/check-email?email=' + encodeURIComponent(emailValue))
+                .then(response => response.json())
+                .then(data => {
+                  if (data.exists) {
+                    // Nếu email ĐÃ TỒN TẠI
+                    emailInput.classList.add("is-invalid"); // Viền đỏ của Bootstrap
+                    emailMsg.innerHTML = "<span class='text-danger'><i class='bi bi-x-circle'></i> Email này đã được đăng ký!</span>";
+                  } else {
+                    // Nếu email CHƯA TỒN TẠI (Có thể dùng)
+                    emailInput.classList.add("is-valid"); // Viền xanh của Bootstrap
+                    emailMsg.innerHTML = "<span class='text-success'><i class='bi bi-check-circle'></i> Email hợp lệ.</span>";
+                  }
+                })
+                .catch(error => {
+                  console.error("Lỗi AJAX:", error);
+                  emailMsg.innerHTML = "";
+                });
+      } else {
+        // Reset nếu ô trống
+        emailInput.classList.remove("is-invalid", "is-valid");
+        emailMsg.innerHTML = "";
+      }
+    });
+  });
+</script>
+
 
 </body>
 </html>

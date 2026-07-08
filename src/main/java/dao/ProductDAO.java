@@ -1,19 +1,13 @@
 package dao;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.List;
-import javax.sql.DataSource;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Repository;
-
 import models.Category;
 import models.Product;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
+
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import java.util.List;
 
 @Repository
 public class ProductDAO {
@@ -88,9 +82,16 @@ public class ProductDAO {
             }
             statement.executeUpdate();
         }
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    // ✅ Query-only methods
+    @Transactional(readOnly = true)
+    public Product getProductById(int id) {
+        return entityManager.find(Product.class, id);
     }
 
-    // 3. Lấy tất cả sản phẩm
+    @Transactional(readOnly = true)
     public List<Product> getAllProducts() {
         List<Product> products = new ArrayList<>();
         String sql = "SELECT * FROM `dbo.product`";
@@ -119,44 +120,21 @@ public class ProductDAO {
             throw new RuntimeException("Lỗi khi lấy danh sách sản phẩm: " + e.getMessage(), e);
         }
         return products;
+        return entityManager.createQuery("SELECT p FROM Product p", Product.class).getResultList();
     }
 
-    // 4. Cập nhật thông tin sản phẩm
-    public void updateProduct(Product product) {
-        String sql = "UPDATE `dbo.product` SET product_name = ?, description = ?, images = ?, price = ?, stock = ?, category_id = ? WHERE id = ?";
-        try (Connection connection = dataSource.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setString(1, product.getName());
-            statement.setString(2, product.getDescription());
-            statement.setString(3, product.getPhoto());
-            statement.setDouble(4, product.getPrice());
-            statement.setInt(5, product.getStock());
-
-            if (product.getCategory() != null) {
-                statement.setInt(6, product.getCategory().getId());
-            } else {
-                statement.setNull(6, java.sql.Types.INTEGER);
-            }
-            statement.setInt(7, product.getId());
-
-            statement.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw new RuntimeException("Lỗi khi cập nhật sản phẩm: " + e.getMessage(), e);
-        }
+    @Transactional(readOnly = true)
+    public List<Product> getProductsByCategoryId(int categoryId) {
+        return entityManager.createQuery("SELECT p FROM Product p WHERE p.category.id = :categoryId", Product.class)
+                .setParameter("categoryId", categoryId)
+                .getResultList();
     }
 
-    // 5. Xóa sản phẩm
-    public void deleteProduct(int id) {
-        String sql = "DELETE FROM `dbo.product` WHERE id = ?";
-        try (Connection connection = dataSource.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setInt(1, id);
-            statement.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw new RuntimeException("Lỗi khi xóa sản phẩm: " + e.getMessage(), e);
-        }
+    @Transactional(readOnly = true)
+    public List<Product> searchProductByName(String name) {
+        return entityManager.createQuery("SELECT p FROM Product p WHERE p.name LIKE :name", Product.class)
+                .setParameter("name", "%" + name + "%")
+                .getResultList();
     }
 
     public Category getCategoryById(int categoryId) {
@@ -347,14 +325,54 @@ public class ProductDAO {
                 int categoryId = resultSet.getInt("category_id");
                 Category category = getCategoryById(categoryId);
                 product.setCategory(category);
+    @Transactional(readOnly = true)
+    public List<Product> filteringProductByPrice(double minPrice, double maxPrice) {
+        return entityManager.createQuery("SELECT p FROM Product p WHERE p.price BETWEEN :minPrice AND :maxPrice", Product.class)
+                .setParameter("minPrice", minPrice)
+                .setParameter("maxPrice", maxPrice)
+                .getResultList();
+    }
 
-                list.add(product);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw new RuntimeException("Lỗi khi lấy sản phẩm phân trang: " + e.getMessage(), e);
-        }
-        return list;
+    @Transactional(readOnly = true)
+    public List<Product> getTop4() {
+        return entityManager.createQuery("SELECT p FROM Product p ORDER BY p.id DESC", Product.class)
+                .setMaxResults(4)
+                .getResultList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<Product> getNext4(int amount) {
+        return entityManager.createQuery("SELECT p FROM Product p ORDER BY p.id ASC", Product.class)
+                .setFirstResult(amount)
+                .setMaxResults(3)
+                .getResultList();
+    }
+
+    @Transactional(readOnly = true)
+    public double getTotalRevenue() {
+        Double total = entityManager.createQuery("SELECT SUM(p.price) FROM Product p", Double.class).getSingleResult();
+        return total != null ? total : 0.0;
+    }
+
+    @Transactional(readOnly = true)
+    public Category getCategoryById(int categoryId) {
+        return entityManager.find(Category.class, categoryId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Category> getAllCategories() {
+        return entityManager.createQuery("SELECT c FROM Category c", Category.class).getResultList();
+    }
+
+    // ✅ Write operations - Read-Write
+    @Transactional
+    public void addProduct(Product product) {
+        entityManager.persist(product);
+    }
+
+    @Transactional
+    public void updateProduct(Product product) {
+        entityManager.merge(product);
     }
 
     public double getTotalRevenue() {
@@ -369,8 +387,12 @@ public class ProductDAO {
         } catch (SQLException e) {
             e.printStackTrace();
             throw new RuntimeException("Lỗi khi tính tổng doanh thu: " + e.getMessage(), e);
+    @Transactional
+    public void deleteProduct(int id) {
+        Product product = entityManager.find(Product.class, id);
+        if (product != null) {
+            entityManager.remove(product);
         }
-        return totalRevenue;
     }
 
     public List<models.Review> getReviewsByProductId(int productId) {

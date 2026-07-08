@@ -143,7 +143,7 @@ public class ProfileController {
                 userDAO.updatePassword(email, p1);
                 session.invalidate();
                 return "redirect:/login?msg=" + URLEncoder.encode("Đổi mật khẩu thành công! Vui lòng đăng nhập lại.", StandardCharsets.UTF_8);
-            } catch (SQLException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
                 model.addAttribute("message", "Có lỗi xảy ra khi cập nhật mật khẩu. Vui lòng thử lại.");
                 return "ChangePassword";
