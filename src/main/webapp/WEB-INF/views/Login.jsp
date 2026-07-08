@@ -32,11 +32,11 @@
 							</div>
 						</c:if>
 
-						<form action="${pageContext.request.contextPath}/login" method="post">
+						<form action="${pageContext.request.contextPath}/doLogin" method="post">
 							<div class="row gy-3 overflow-hidden">
 								<div class="col-12">
 									<div class="form-floating mb-3">
-										<input type="email" class="form-control" name="email" id="email" placeholder="name@example.com" required>
+										<input type="email" class="form-control" name="username" id="email" placeholder="name@example.com" required>
 										<label for="email" class="form-label">Email Address</label>
 									</div>
 								</div>
@@ -73,8 +73,7 @@
 									</div>
 								</div>
 							</div>
-						</form>
-					</div>
+						</form>					</div>
 				</div>
 			</div>
 		</div>

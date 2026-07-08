@@ -25,7 +25,7 @@ import jakarta.persistence.EntityManagerFactory;
 @Configuration
 @EnableWebMvc
 @EnableTransactionManagement // Bật tính năng quản lý Transaction
-@ComponentScan(basePackages = {"controller", "dao", "models"})
+@ComponentScan(basePackages = {"controller", "dao", "models", "utool", "config"})
 public class AppConfig implements WebMvcConfigurer {
 
     // 1. Giữ nguyên cấu hình DataSource HikariCP của bạn
@@ -57,7 +57,7 @@ public class AppConfig implements WebMvcConfigurer {
         em.setJpaVendorAdapter(vendorAdapter);
 
         Properties properties = new Properties();
-        properties.setProperty("hibernate.dialect", "org.hibernate.dialect.MySQL8Dialect");
+        properties.setProperty("hibernate.dialect", "org.hibernate.dialect.MySQLDialect");
         properties.setProperty("hibernate.show_sql", "true"); // In SQL ra console để dễ debug
         // properties.setProperty("hibernate.hbm2ddl.auto", "none"); // Giữ nguyên DB, không tự tạo bảng
         em.setJpaProperties(properties);
