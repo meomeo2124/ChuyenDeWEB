@@ -52,78 +52,78 @@ public class AuthController {
     }
 
     // 2. Xử lý dữ liệu Đăng nhập
-    @PostMapping("/login")
-    public String handleLogin(
-            @RequestParam(value = "credential", required = false) String idTokenString,
-            @RequestParam(value = "email", required = false) String email,
-            @RequestParam(value = "password", required = false) String pass,
-            HttpSession session) {
-        try {
-            // LUỒNG 1: ĐĂNG NHẬP BẰNG GOOGLE
-            if (idTokenString != null && !idTokenString.isEmpty()) {
-                GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(), GsonFactory.getDefaultInstance())
-                        .setAudience(Collections.singletonList("564628514231-g4733rfvad9m98vffpn5iofj3ht90u1t.apps.googleusercontent.com"))
-                        .build();
-
-                GoogleIdToken idToken = verifier.verify(idTokenString);
-                if (idToken != null) {
-                    GoogleIdToken.Payload payload = idToken.getPayload();
-                    String googleId = payload.getSubject();
-                    String googleEmail = payload.getEmail();
-                    String name = (String) payload.get("name");
-                    String img = (String) payload.get("picture");
-
-                    User user = userDAO.findByEmail(googleEmail);
-                    if (user == null) {
-                        user = new User();
-                        user.setGoogleId(googleId);
-                        user.setEmail(googleEmail);
-                        user.setUsername(name);
-                        user.setImg(img);
-                        user.setIsAdmin(false);
-                        userDAO.insertUser(user);
-                    } else if (user.getGoogleId() == null) {
-                        user.setGoogleId(googleId);
-                        userDAO.updateUserGoogleId(user);
-                    }
-
-                    setSessionUser(session, user);
-
-                    if (user.getIsAdmin()) {
-                        return "redirect:/admin/dashboard";
-                    }
-                    return "redirect:/";
-                } else {
-                    return "redirect:/login?error=google_token_invalid";
-                }
-            }
-
-            // LUỒNG 2: ĐĂNG NHẬP TRUYỀN THỐNG (EMAIL/PASS)
-            else if (email != null && pass != null) {
-                User user = userDAO.getLogin(email, pass);
-                if (user == null) {
-                    String flashMsg = URLEncoder.encode("Sai thông tin tài khoản hoặc mật khẩu", StandardCharsets.UTF_8);
-                    return "redirect:/login?msg=" + flashMsg;
-                } else {
-                    setSessionUser(session, user);
-
-                    // ✅ ĐÃ SỬA: Chuyển từ user.isAdmin() sang user.getIsAdmin() cho đúng Model của bạn
-                    if (user.getIsAdmin()) {
-                        return "redirect:/admin/dashboard";
-                    } else {
-                        return "redirect:/";
-                    }
-                }
-            } else {
-                return "redirect:/login?error=missing_credentials";
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            String systemError = URLEncoder.encode("Có lỗi hệ thống xảy ra.", StandardCharsets.UTF_8);
-            return "redirect:/login?msg=" + systemError;
-        }
-    }
+   // @PostMapping("/login")
+//    public String handleLogin(
+//            @RequestParam(value = "credential", required = false) String idTokenString,
+//            @RequestParam(value = "email", required = false) String email,
+//            @RequestParam(value = "password", required = false) String pass,
+//            HttpSession session) {
+//        try {
+//            // LUỒNG 1: ĐĂNG NHẬP BẰNG GOOGLE
+//            if (idTokenString != null && !idTokenString.isEmpty()) {
+//                GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(), GsonFactory.getDefaultInstance())
+//                        .setAudience(Collections.singletonList("564628514231-g4733rfvad9m98vffpn5iofj3ht90u1t.apps.googleusercontent.com"))
+//                        .build();
+//
+//                GoogleIdToken idToken = verifier.verify(idTokenString);
+//                if (idToken != null) {
+//                    GoogleIdToken.Payload payload = idToken.getPayload();
+//                    String googleId = payload.getSubject();
+//                    String googleEmail = payload.getEmail();
+//                    String name = (String) payload.get("name");
+//                    String img = (String) payload.get("picture");
+//
+//                    User user = userDAO.findByEmail(googleEmail);
+//                    if (user == null) {
+//                        user = new User();
+//                        user.setGoogleId(googleId);
+//                        user.setEmail(googleEmail);
+//                        user.setUsername(name);
+//                        user.setImg(img);
+//                        user.setIsAdmin(false);
+//                        userDAO.insertUser(user);
+//                    } else if (user.getGoogleId() == null) {
+//                        user.setGoogleId(googleId);
+//                        userDAO.updateUserGoogleId(user);
+//                    }
+//
+//                    setSessionUser(session, user);
+//
+//                    if (user.getIsAdmin()) {
+//                        return "redirect:/admin/dashboard";
+//                    }
+//                    return "redirect:/";
+//                } else {
+//                    return "redirect:/login?error=google_token_invalid";
+//                }
+//            }
+//
+//            // LUỒNG 2: ĐĂNG NHẬP TRUYỀN THỐNG (EMAIL/PASS)
+//            else if (email != null && pass != null) {
+//                User user = userDAO.getLogin(email, pass);
+//                if (user == null) {
+//                    String flashMsg = URLEncoder.encode("Sai thông tin tài khoản hoặc mật khẩu", StandardCharsets.UTF_8);
+//                    return "redirect:/login?msg=" + flashMsg;
+//                } else {
+//                    setSessionUser(session, user);
+//
+//                    // ✅ ĐÃ SỬA: Chuyển từ user.isAdmin() sang user.getIsAdmin() cho đúng Model của bạn
+//                    if (user.getIsAdmin()) {
+//                        return "redirect:/admin/dashboard";
+//                    } else {
+//                        return "redirect:/";
+//                    }
+//                }
+//            } else {
+//                return "redirect:/login?error=missing_credentials";
+//            }
+//
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//            String systemError = URLEncoder.encode("Có lỗi hệ thống xảy ra.", StandardCharsets.UTF_8);
+//            return "redirect:/login?msg=" + systemError;
+//        }
+//    }
 
     private void setSessionUser(HttpSession session, User user) {
         session.setAttribute("user", user);

@@ -9,7 +9,7 @@ import models.User;
 
 import java.io.IOException;
 
-@WebFilter("/secure/*")
+// @WebFilter(urlPatterns = {"/secure/*", "/admin/*"})
 public class Filter implements jakarta.servlet.Filter {
 
     @Override
