@@ -19,26 +19,27 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        // LƯU Ý 1: Sửa lại tên hàm lấy user cho đúng với file UserDAO của nhóm bạn
-        // (Ví dụ: userDAO.getUserByEmail(username) hoặc userDAO.findByUsername(username))
+        // Mặc dù Spring Security gọi biến này là "username",
+        // nhưng thực tế hệ thống của bạn đang tìm kiếm bằng EMAIL.
         User user = userDAO.findByEmail(username);
 
         if (user == null) {
             throw new UsernameNotFoundException("Sai tài khoản hoặc mật khẩu");
         }
 
-        // LƯU Ý 2: Phân quyền. Bạn kiểm tra xem file User.java của bạn lưu quyền (role) như thế nào.
-        // Giả sử nếu có hàm user.isAdmin() trả về true/false:
+        // 1. Mặc định cấp quyền USER
         String role = "ROLE_USER";
-        /* Nếu code nhóm bạn có phân biệt Admin thì bỏ comment đoạn này:
-        if (user.getRole().equals("Admin")) { // Hoặc user.isAdmin() == true
+
+        // 2. 🔥 ĐÃ FIX: Mở khóa cấp quyền ADMIN.
+        // Nếu là Admin thì gán ROLE_ADMIN để vào được trang Dashboard
+        if (user.getIsAdmin()) {
             role = "ROLE_ADMIN";
         }
-        */
 
         // Trả về đối tượng User chuẩn của Spring Security
+        // LƯU Ý: Phải truyền user.getEmail() vào đây để SecurityConfig lấy đúng Email xử lý Session
         return new org.springframework.security.core.userdetails.User(
-                username,
+                user.getEmail(),
                 user.getPassword(),
                 Collections.singletonList(new SimpleGrantedAuthority(role))
         );
