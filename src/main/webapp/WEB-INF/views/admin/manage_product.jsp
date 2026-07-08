@@ -1,5 +1,6 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<%@ taglib prefix="fmt" uri="jakarta.tags.fmt" %>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -158,8 +159,11 @@
 								</td>
 								<td><span class="fw-bold text-dark"><c:out value="${product.name}" default="Chưa có tên"/></span></td>
 								<td><span class="text-muted small"><c:out value="${product.description}" default="Chưa có mô tả"/></span></td>
-								<td><span class="text-primary fw-semibold"><c:out value="${String.format('%,.0f', product.price)}"/> VNĐ</span></td>
-								<td><span class="badge bg-light text-secondary border"><c:out value="${product.category != null ? product.category.title : 'Chưa phân loại'}"/></span></td>
+								<td>
+									<span class="text-primary fw-semibold">
+										<fmt:formatNumber value="${product.price}" pattern="#,###"/> VNĐ
+									</span>
+								</td>								<td><span class="badge bg-light text-secondary border"><c:out value="${product.category != null ? product.category.title : 'Chưa phân loại'}"/></span></td>
 								<td class="text-center"><span class="fw-medium">${product.stock}</span></td>
 								<td>
 									<div class="d-flex justify-content-center gap-2">

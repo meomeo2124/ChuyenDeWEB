@@ -29,7 +29,7 @@ public class ProductDAO {
 
     @Transactional(readOnly = true)
     public List<Product> getAllProducts() {
-        return entityManager.createQuery("SELECT p FROM Product p ORDER BY p.id DESC", Product.class).getResultList();
+        return entityManager.createQuery("SELECT p FROM Product p LEFT JOIN FETCH p.category ORDER BY p.id DESC", Product.class).getResultList();
     }
 
     @Transactional(readOnly = true)
