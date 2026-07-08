@@ -5,6 +5,17 @@ import jakarta.persistence.*;
 @Entity
 @Table(name = "`product`") // Đổi từ 'products' thành 'product' để sửa lỗi Table doesn't exist
 public class Product {
+    private int id; // ID sản phẩm
+    private String name; // Tên sản phẩm
+    private String description; // Mô tả sản phẩm
+    private String photo; // URL ảnh sản phẩm (ánh xạ từ cột `photo`)
+    private double price; // Giá sản phẩm
+    private int stock; // 
+    private Category category; // Đối tượng Category ánh xạ từ category_id
+    private int isFlashSale;          // 1 là bật, 0 là tắt
+    private int flashSaleDiscount;
+    public Product() {
+    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -45,6 +56,22 @@ public class Product {
         this.stock = stock;
         this.category = category;
     }
+    public int getIsFlashSale() {
+        return isFlashSale;
+    }
+
+    public void setIsFlashSale(int isFlashSale) {
+        this.isFlashSale = isFlashSale;
+    }
+
+    public int getFlashSaleDiscount() {
+        return flashSaleDiscount;
+    }
+
+    public void setFlashSaleDiscount(int flashSaleDiscount) {
+        this.flashSaleDiscount = flashSaleDiscount;
+    }
+}
 
     public int getStock() { return stock; }
     public void setStock(int stock) { this.stock = stock; }

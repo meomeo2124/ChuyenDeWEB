@@ -1,11 +1,15 @@
 package controller.web;
 
 import dao.ProductDAO;
+import dao.OrderDAO; // Thêm import OrderDAO
 import models.Product;
+import models.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
@@ -18,22 +22,28 @@ import java.util.Locale;
 
 @Controller
 public class ProductController {
+
     private final ProductDAO productDAO;
-    @Autowired
-    public ProductController(ProductDAO productDAO) {
+    private final OrderDAO orderDAO; // 🌟 BỔ SUNG: Khai báo OrderDAO
+
+    @Autowired // 🌟 CẬP NHẬT: Inject cả ProductDAO và OrderDAO qua Constructor
+    public ProductController(ProductDAO productDAO, OrderDAO orderDAO) {
         this.productDAO = productDAO;
+        this.orderDAO = orderDAO;
     }
 
     @GetMapping("/product")
-    public String showProductDetail(
+    public String getProductDetail(
             @RequestParam(value = "id", required = false) String productIdStr,
             Model model,
+            jakarta.servlet.http.HttpSession session, // 🌟 BỔ SUNG: Thêm HttpSession để đọc User
             RedirectAttributes redirectAttributes) {
 
         String errorMessage;
 
+        // 1. Kiểm tra ID trống
         if (productIdStr == null || productIdStr.trim().isEmpty()) {
-            errorMessage = "Product ID is required";
+            errorMessage = "Mã số sản phẩm không được để trống";
             return redirectToHomepageWithError(errorMessage, redirectAttributes);
         }
 
@@ -41,32 +51,41 @@ public class ProductController {
         try {
             id = Integer.parseInt(productIdStr.trim());
             if (id <= 0) {
-                errorMessage = "Invalid product ID";
+                errorMessage = "Mã số sản phẩm không hợp lệ";
                 return redirectToHomepageWithError(errorMessage, redirectAttributes);
             }
         } catch (NumberFormatException e) {
-            errorMessage = "Invalid product ID format";
+            errorMessage = "Định dạng mã sản phẩm phải là ký số";
             return redirectToHomepageWithError(errorMessage, redirectAttributes);
         }
 
         try {
+            // 2. Truy vấn chi tiết đồ uống
             Product product = productDAO.getProductById(id);
-
             if (product == null) {
-                errorMessage = "Product not found";
+                errorMessage = "Sản phẩm không tồn tại trong hệ thống";
                 return redirectToHomepageWithError(errorMessage, redirectAttributes);
             }
 
+            // 3. Nạp danh sách đồ uống gợi ý và danh sách đánh giá thực tế
             List<Product> productList = productDAO.getAllProducts();
+            List<models.Review> reviews = productDAO.getReviewsByProductId(id);
+            boolean canReview = false;
+            User user = (User) session.getAttribute("user");
+            if (user != null) {
+                canReview = orderDAO.hasUserPurchasedProduct(user.getId(), id);
+            }
 
             model.addAttribute("product", product);
             model.addAttribute("productList", productList);
+            model.addAttribute("reviews", reviews);
+            model.addAttribute("canReview", canReview); // 🌟 BỔ SUNG: Đẩy kết quả (true/false) ra file JSP
 
             return "product-detail";
 
         } catch (Exception e) {
             e.printStackTrace();
-            errorMessage = "An error occurred: " + e.getMessage();
+            errorMessage = "Lỗi hệ thống: " + e.getMessage();
             return redirectToHomepageWithError(errorMessage, redirectAttributes);
         }
     }
@@ -78,6 +97,46 @@ public class ProductController {
         } catch (Exception e) {
             return "redirect:/?error=system_error";
         }
+    }
+
+    @PostMapping("/product/review")
+    public String submitReview(@RequestParam("productId") int productId,
+                               @RequestParam("rating") int rating,
+                               @RequestParam("comment") String comment,
+                               @RequestParam(value = "reviewImage", required = false) org.springframework.web.multipart.MultipartFile file,
+                               jakarta.servlet.http.HttpSession session) {
+        User user = (User) session.getAttribute("user");
+
+        if (user == null || !orderDAO.hasUserPurchasedProduct(user.getId(), productId)) {
+            return "redirect:/product?id=" + productId + "&error=unauthorized";
+        }
+
+        String username = user.getUsername();
+        String imagePath = null;
+
+        if (file != null && !file.isEmpty()) {
+            try {
+                String uploadsDir = session.getServletContext().getRealPath("/") + "uploads/";
+                java.io.File dir = new java.io.File(uploadsDir);
+                if (!dir.exists()) dir.mkdirs();
+
+                String fileName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
+                file.transferTo(new java.io.File(uploadsDir + fileName));
+                imagePath = fileName;
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        models.Review rev = new models.Review();
+        rev.setProductId(productId);
+        rev.setUsername(username);
+        rev.setRating(rating);
+        rev.setComment(comment);
+        rev.setImagePath(imagePath);
+
+        productDAO.insertReview(rev);
+        return "redirect:/product?id=" + productId;
     }
 
     @GetMapping(value = "/load", produces = "text/html;charset=UTF-8")
@@ -98,44 +157,31 @@ public class ProductController {
             for (Product o : products) {
                 String productUrl = contextPath + "/product?id=" + o.getId();
                 String photoName = (o.getPhoto() != null && !o.getPhoto().trim().isEmpty()) ? o.getPhoto() : "no-sample.png";
-
                 String formattedPrice = vnFormat.format(o.getPrice());
 
-                htmlBuilder.append("<div class=\"product-count col mb-5\">\r\n")
-                        .append("    <div class=\"card h-100\">\r\n")
+                htmlBuilder.append("<div class=\"product-count col mb-4\">\r\n")
+                        .append("    <div class=\"card h-100 product-card\">\r\n")
                         .append("        <a href=\"").append(productUrl).append("\"> \r\n")
-                        .append("            <img class=\"card-img-top bg-dark\"\r\n")
-                        .append("                 src=\"").append(contextPath).append("/image/product/").append(photoName).append("\"\r\n")
-                        .append("                 onerror=\"this.src='").append(contextPath).append("/image/product/no-sample.png'; this.onerror=null;\" />\r\n")
+                        .append("            <div class=\"product-img-wrapper\">\r\n")
+                        .append("                 <img src=\"").append(contextPath).append("/image/product/").append(photoName).append("\"\r\n")
+                        .append("                      onerror=\"this.src='").append(contextPath).append("/image/product/no-sample.png';\" />\r\n")
+                        .append("            </div>\r\n")
                         .append("        </a>\r\n")
-                        .append("        \r\n")
-                        .append("        <div class=\"card-body p-4\">\r\n")
-                        .append("            <div class=\"text-center\">\r\n")
-                        .append("                \r\n")
-                        .append("                <h5 class=\"fw-bolder\">\r\n")
+                        .append("        <div class=\"card-body p-3 pt-1 text-center d-flex flex-column justify-content-between\">\r\n")
+                        .append("            <div class=\"mb-2\">\r\n")
+                        .append("                <div class=\"product-title\">\r\n")
                         .append("                    <a href=\"").append(productUrl).append("\" class=\"text-decoration-none text-dark\">\r\n")
                         .append("                        ").append(escapeHtml(o.getName())).append("\r\n")
                         .append("                    </a>\r\n")
-                        .append("                </h5>\r\n")
-                        .append("                \r\n")
-                        .append("                <div class=\"d-flex justify-content-center small text-warning mb-2\">\r\n")
-                        .append("                    <div class=\"bi-star-fill\">*</div>\r\n")
-                        .append("                    <div class=\"bi-star-fill\">*</div>\r\n")
-                        .append("                    <div class=\"bi-star-fill\">*</div>\r\n")
-                        .append("                    <div class=\"bi-star-fill\">*</div>\r\n")
-                        .append("                    <div class=\"bi-star-fill\">*</div>\r\n")
                         .append("                </div>\r\n")
-                        .append("                \r\n")
-                        .append("                <span class=\"text-primary fw-bold border-top pt-2 d-inline-block w-100\">\r\n")
-                        .append("                    ").append(formattedPrice).append(" VNĐ\r\n")
-                        .append("                </span>\r\n")
+                        .append("                <div class=\"d-flex justify-content-center small text-warning gap-0.5\" style=\"font-size: 11px;\">\r\n")
+                        .append("                    <i class=\"bi bi-star-fill\"></i><i class=\"bi bi-star-fill\"></i><i class=\"bi bi-star-fill\"></i><i class=\"bi bi-star-fill\"></i><i class=\"bi bi-star-fill\"></i>\r\n")
+                        .append("                </div>\r\n")
                         .append("            </div>\r\n")
-                        .append("        </div>\r\n")
-                        .append("        \r\n")
-                        .append("        <div class=\"card-footer p-4 pt-0 border-top-0 bg-transparent\">\r\n")
-                        .append("            <div class=\"text-center\">\r\n")
-                        .append("                <a class=\"btn btn-outline-dark mt-auto\" href=\"").append(productUrl).append("\">View options</a>\r\n")
+                        .append("            <div class=\"product-price mb-3\">\r\n")
+                        .append("                ").append(formattedPrice).append(" đ\r\n")
                         .append("            </div>\r\n")
+                        .append("            <a class=\"btn btn-view-options w-100\" href=\"").append(productUrl).append("\">Thêm mua ngay</a>\r\n")
                         .append("        </div>\r\n")
                         .append("    </div>\r\n")
                         .append("</div>");

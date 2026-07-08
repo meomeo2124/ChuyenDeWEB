@@ -1,8 +1,10 @@
 package controller.web;
 
 import dao.UserDAO;
+import dao.OrderDAO; // 🌟 BỔ SUNG: Import OrderDAO để lấy lịch sử đơn hàng
 import jakarta.servlet.http.HttpSession;
 import models.User;
+import models.Order; // 🌟 BỔ SUNG: Import Model Order
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -12,15 +14,54 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 @Controller
 public class ProfileController {
 
     private final UserDAO userDAO;
+    private final OrderDAO orderDAO;
 
     @Autowired
-    public ProfileController(UserDAO userDAO) {
+    public ProfileController(UserDAO userDAO, OrderDAO orderDAO) {
         this.userDAO = userDAO;
+        this.orderDAO = orderDAO;
+    }
+
+    @GetMapping("/secure/user/history")
+    public String showOrderHistory(HttpSession session, Model model) {
+        User user = (User) session.getAttribute("user");
+        if (user == null) {
+            return "redirect:/login";
+        }
+
+        try {
+            List<Order> allOrders = orderDAO.getAllOrdersWithUser();
+
+            List<Integer> userOrderIds = allOrders.stream()
+                    .filter(o -> o.getUserId() == user.getId())
+                    .map(Order::getId)
+                    .toList();
+
+            List<Order> fullUserOrders = new ArrayList<>();
+            for (int orderId : userOrderIds) {
+                Order fullOrder = orderDAO.getOrderById(orderId); // Hàm này có nạp đầy đủ List<OrderItem>
+                if (fullOrder != null) {
+                    fullUserOrders.add(fullOrder);
+                }
+            }
+
+            // Đẩy danh sách đơn hàng đã được điền đầy đủ dữ liệu ra ngoài giao diện
+            model.addAttribute("orders", fullUserOrders);
+            model.addAttribute("user", user);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return "secure/history";
     }
 
     @GetMapping("/secure/edit")

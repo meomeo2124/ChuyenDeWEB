@@ -193,4 +193,22 @@ public class AdminProductController {
             return "redirect:/admin/product/manage?error=" + URLEncoder.encode("Lỗi khi xóa sản phẩm.", StandardCharsets.UTF_8);
         }
     }
+    @GetMapping("/reviews")
+    public String manageReviews(Model model) {
+        List<models.Review> reviewList = productDAO.getAllReviews();
+        model.addAttribute("reviewList", reviewList);
+        return "admin/manage_reviews";
+    }
+
+    @PostMapping("/reviews/delete")
+    public String deleteReview(@RequestParam("reviewId") int reviewId,
+                               org.springframework.web.servlet.mvc.support.RedirectAttributes redirectAttributes) {
+        boolean success = productDAO.deleteReviewById(reviewId);
+        if (success) {
+            redirectAttributes.addFlashAttribute("success", "Đã gỡ bỏ đánh giá thành công!");
+        } else {
+            redirectAttributes.addFlashAttribute("error", "Không thể xóa đánh giá này.");
+        }
+        return "redirect:/admin/product/reviews";
+    }
 }
