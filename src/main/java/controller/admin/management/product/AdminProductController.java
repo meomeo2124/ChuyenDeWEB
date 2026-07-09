@@ -96,8 +96,14 @@ public class AdminProductController {
             if (filePart != null && !filePart.isEmpty()) {
                 String originalFileName = filePart.getOriginalFilename();
                 String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
-                String extension = originalFileName.substring(originalFileName.lastIndexOf("."));
-                finalFileName = timestamp + "_" + originalFileName.replace(extension, "") + extension;
+
+                String extension = "";
+                int dotIndex = originalFileName.lastIndexOf(".");
+                if (dotIndex >= 0) {
+                    extension = originalFileName.substring(dotIndex);
+                }
+                String nameWithoutExt = (dotIndex >= 0) ? originalFileName.substring(0, dotIndex) : originalFileName;
+                finalFileName = timestamp + "_" + nameWithoutExt + extension;
 
                 File destFile = new File(imagePath + File.separator + finalFileName);
                 filePart.transferTo(destFile);
@@ -159,8 +165,13 @@ public class AdminProductController {
             if (filePart != null && !filePart.isEmpty()) {
                 String originalFileName = filePart.getOriginalFilename();
                 String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
-                String extension = originalFileName.substring(originalFileName.lastIndexOf("."));
-                finalFileName = timestamp + "_" + originalFileName.replace(extension, "") + extension;
+                String extension = "";
+                int dotIndex = originalFileName.lastIndexOf(".");
+                if (dotIndex >= 0) {
+                    extension = originalFileName.substring(dotIndex);
+                }
+                String nameWithoutExt = (dotIndex >= 0) ? originalFileName.substring(0, dotIndex) : originalFileName;
+                finalFileName = timestamp + "_" + nameWithoutExt + extension;
 
                 String imagePath = servletContext.getRealPath("") + File.separator + "image" + File.separator + "product";
                 File destFile = new File(imagePath + File.separator + finalFileName);
