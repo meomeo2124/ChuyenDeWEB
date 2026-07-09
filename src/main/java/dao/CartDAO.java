@@ -33,7 +33,7 @@ public class CartDAO {
                     .setParameter("userId", userId)
                     .getSingleResult();
         } catch (NoResultException e) {
-            throw new ResourceNotFoundException("Cart", "userId", userId);
+            return null;
         } catch (Exception e) {
             throw new DatabaseException("SELECT", "Cart", "Failed to get cart by user ID", e);
         }
