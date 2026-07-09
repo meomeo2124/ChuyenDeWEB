@@ -17,7 +17,7 @@ public class JavaMailUtil {
 	
 	
 	static final String from = "doducduong2004@gmail.com";
-	static final String password = "klkp pfwj hskp jhyj";
+	static final String password = "klkppfwjhskpjhyj";
 
 	public static int sendEmail(String to, int authNum) {
 		// Properties : khai báo các thuộc tính

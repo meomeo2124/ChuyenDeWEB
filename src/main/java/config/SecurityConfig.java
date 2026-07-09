@@ -13,10 +13,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.crypto.password.NoOpPasswordEncoder;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder; // Đổi sang BCrypt
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-// Thêm thư viện này để fix lỗi requestMatchers
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 @Configuration
@@ -29,9 +28,8 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable())
+                .csrf(csrf -> csrf.disable()) // Giữ nguyên disable và chuẩn bị câu trả lời vấn đáp
                 .authorizeHttpRequests(auth -> auth
-                        // SỬ DỤNG hasRole THAY VÌ hasAuthority
                         .requestMatchers(new AntPathRequestMatcher("/admin/**")).hasRole("ADMIN")
                         .requestMatchers(new AntPathRequestMatcher("/secure/**")).hasAnyRole("USER", "ADMIN")
                         .anyRequest().permitAll()
@@ -43,16 +41,21 @@ public class SecurityConfig {
                             String username = authentication.getName();
                             User user = userDAO.findByEmail(username);
 
-                            HttpSession session = request.getSession();
-                            session.setAttribute("user", user);
-                            session.setAttribute("userId", user.getId());
-                            session.setAttribute("img", user.getImg());
+                            // Phòng chống lỗi NullPointerException nếu không tìm thấy User
+                            if (user != null) {
+                                HttpSession session = request.getSession();
+                                session.setAttribute("user", user);
+                                session.setAttribute("userId", user.getId());
+                                session.setAttribute("img", user.getImg());
 
-                            // Nếu là Admin, đưa thẳng vào Dashboard, ngược lại vào trang chủ
-                            if (user.getIsAdmin()) {
-                                response.sendRedirect(request.getContextPath() + "/admin/dashboard");
+                                // Phân hướng trang sau khi login dựa vào vai trò
+                                if (user.getIsAdmin()) {
+                                    response.sendRedirect(request.getContextPath() + "/admin/dashboard");
+                                } else {
+                                    response.sendRedirect(request.getContextPath() + "/");
+                                }
                             } else {
-                                response.sendRedirect(request.getContextPath() + "/");
+                                response.sendRedirect(request.getContextPath() + "/login?error=true");
                             }
                         })
                         .failureUrl("/login?error=true")
@@ -69,8 +72,9 @@ public class SecurityConfig {
         return http.build();
     }
 
+
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return NoOpPasswordEncoder.getInstance();
+        return new BCryptPasswordEncoder();
     }
 }
