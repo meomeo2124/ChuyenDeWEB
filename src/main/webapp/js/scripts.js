@@ -25,23 +25,24 @@
 	    });
 	}
 
-	function updateQuantity() {
-		$.ajax({
-		        url: "/zzzz/loadCart",
-		        type: "GET", // Send it through GET method
-		        data: {
-		            exists: amount 
-		        },
-		        success: function(data) {
-		            var row = document.getElementById("contentUpdateQuantity");
-		            row.innerHTML += data;	
-		        },
-		        error: function(xhr) {
-		            console.error("Error loading more products:", xhr);
-		            // Optionally, you can display an error message to the user
-		        }
-		    });
-	}
+// Nếu bạn lấy quantity từ 1 thẻ input có id là "quantityInput"
+function updateQuantity() {
+	var amount = document.getElementById("quantityInput").value; // BẠN PHẢI THÊM DÒNG NÀY ĐỂ LẤY VALUE
+	$.ajax({
+		url: "/zzzz/loadCart",
+		type: "GET",
+		data: {
+			exists: amount
+		},
+		success: function(data) {
+			var row = document.getElementById("contentUpdateQuantity");
+			row.innerHTML = data; // Thường thì load cart sẽ update thay thế (innerHTML = data) chứ ko cộng dồn (+=) như loadMore
+		},
+		error: function(xhr) {
+			console.error("Error loading cart:", xhr);
+		}
+	});
+}
 	
 	
 	
