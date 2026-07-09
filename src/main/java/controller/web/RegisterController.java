@@ -6,6 +6,7 @@ import models.User;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid; // Nhớ import thư viện này
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -20,10 +21,12 @@ import java.util.Map;
 public class RegisterController {
 
     private final UserDAO userDAO;
+    private final PasswordEncoder passwordEncoder;
 
     @Autowired
-    public RegisterController(UserDAO userDAO) {
+    public RegisterController(UserDAO userDAO, PasswordEncoder passwordEncoder) { // Sửa lại constructor
         this.userDAO = userDAO;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @GetMapping("/register")
@@ -59,7 +62,7 @@ public class RegisterController {
             // 4. Nếu qua hết các lỗi, map DTO sang Entity User
             User tempUser = new User();
             tempUser.setUsername(userDTO.getUsername());
-            tempUser.setPassword(userDTO.getPassword());
+            tempUser.setPassword(passwordEncoder.encode(userDTO.getPassword()));
             tempUser.setEmail(userDTO.getEmail());
             tempUser.setAddress(userDTO.getAddress());
             tempUser.setPhone(userDTO.getPhone_number());
